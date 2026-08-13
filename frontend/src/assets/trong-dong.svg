@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
+    <g stroke="#94a3b8" stroke-width="1.5" fill="none" opacity="0.15">
+        <!-- Vòng tròn trung tâm (Mặt trời) -->
+        <circle cx="200" cy="200" r="30" fill="#94a3b8" opacity="0.1" />
+        <path d="M 200 170 L 210 200 L 200 230 L 190 200 Z" fill="#94a3b8" opacity="0.2"/>
+        <path d="M 170 200 L 200 210 L 230 200 L 200 190 Z" fill="#94a3b8" opacity="0.2"/>
+        <path d="M 178 178 L 200 200 L 222 222 M 178 222 L 200 200 L 222 178" />
+        
+        <!-- Các vòng tròn đồng tâm -->
+        <circle cx="200" cy="200" r="50" />
+        <circle cx="200" cy="200" r="70" stroke-dasharray="4 4" />
+        <circle cx="200" cy="200" r="90" />
+        <circle cx="200" cy="200" r="130" />
+        <circle cx="200" cy="200" r="150" stroke-dasharray="10 5" />
+        <circle cx="200" cy="200" r="170" />
+        <circle cx="200" cy="200" r="190" stroke-width="2" />
+        
+        <!-- Chim hạc cách điệu bay ngược chiều kim đồng hồ -->
+        <g stroke-width="2">
+            <!-- Hạc 1 -->
+            <path d="M 200 85 Q 220 70 250 90 L 220 95 Q 200 100 200 85 Z" />
+            <!-- Hạc 2 -->
+            <path d="M 315 200 Q 330 220 310 250 L 305 220 Q 300 200 315 200 Z" />
+            <!-- Hạc 3 -->
+            <path d="M 200 315 Q 180 330 150 310 L 180 305 Q 200 300 200 315 Z" />
+            <!-- Hạc 4 -->
+            <path d="M 85 200 Q 70 180 90 150 L 95 180 Q 100 200 85 200 Z" />
+        </g>
+        
+        <!-- Họa tiết hình học -->
+        <path d="M 200 130 L 215 150 L 185 150 Z" />
+        <path d="M 200 270 L 215 250 L 185 250 Z" />
+        <path d="M 130 200 L 150 215 L 150 185 Z" />
+        <path d="M 270 200 L 250 215 L 250 185 Z" />
+    </g>
+</svg>
