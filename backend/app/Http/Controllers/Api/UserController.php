@@ -45,6 +45,10 @@ class UserController extends Controller
             return response()->json(['message' => $validator->errors()->first()], 422);
         }
 
+        if (empty($request->branch_id) && $request->role !== 'admin') {
+            return response()->json(['message' => 'Vui lòng chọn một Cơ sở cụ thể ở menu bên trái để tạo nhân viên (không chọn Tất cả cơ sở).'], 422);
+        }
+
         try {
             DB::beginTransaction();
 
@@ -100,6 +104,13 @@ class UserController extends Controller
 
         if ($validator->fails()) {
             return response()->json(['message' => $validator->errors()->first()], 422);
+        }
+        
+        $newRole = $request->input('role', $user->roles->first()?->name);
+        $newBranchId = $request->has('branch_id') ? $request->branch_id : $user->branch_id;
+        
+        if (empty($newBranchId) && $newRole !== 'admin') {
+            return response()->json(['message' => 'Vui lòng chọn một Cơ sở cụ thể cho nhân viên này (không để Tất cả cơ sở).'], 422);
         }
 
         try {

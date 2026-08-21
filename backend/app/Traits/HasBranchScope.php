@@ -27,6 +27,11 @@ trait HasBranchScope
                     $requestedBranch = config('app.active_branch_id');
                     if ($requestedBranch) {
                         $model->branch_id = $requestedBranch;
+                    } else {
+                        // Nu cha chn c sY c th (`ang Y Tt c c sY), chn khA'ng cho ThAm m>i
+                        throw \Illuminate\Validation\ValidationException::withMessages([
+                            'branch_id' => 'Vui lòng chọn một Cơ sở cụ thể ở menu bên trái để thực hiện thêm dữ liệu (không chọn "Tất cả cơ sở").'
+                        ]);
                     }
                 }
             }
