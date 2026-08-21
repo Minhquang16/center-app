@@ -32,8 +32,14 @@ class StudentController extends Controller
 
             $month = $targetDate->month;
             $year  = $targetDate->year;
-            $endDate   = Carbon::createFromDate($year, $month, 20)->endOfDay();
-            $startDate = Carbon::createFromDate($year, $month, 20)->subMonth()->addDay()->startOfDay();
+            
+            if ($targetDate->day > 20) {
+                $startDate = Carbon::createFromDate($year, $month, 21)->startOfDay();
+                $endDate   = Carbon::createFromDate($year, $month, 20)->addMonth()->endOfDay();
+            } else {
+                $startDate = Carbon::createFromDate($year, $month, 21)->subMonth()->startOfDay();
+                $endDate   = Carbon::createFromDate($year, $month, 20)->endOfDay();
+            }
 
             // Calculate academic year range
             if ($month >= 8) {
