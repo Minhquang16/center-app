@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api/axios';
 import { toast } from 'sonner';
 import { Mail, Lock, LogIn, Hexagon } from 'lucide-react';
 
@@ -18,7 +18,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const response = await axios.post('http://127.0.0.1:8000/api/login', {
+      const response = await api.post('/login', {
         email,
         password,
       });
