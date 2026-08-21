@@ -7,6 +7,15 @@
   * {
     font-family: 'Montserrat', sans-serif !important;
   }
+
+  html.dark, .dark {
+    color-scheme: dark;
+  }
+  
+  .dark option {
+    background-color: #1e293b;
+    color: #e2e8f0;
+  }
 }
 
 @layer utilities {

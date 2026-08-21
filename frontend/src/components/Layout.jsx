@@ -4,7 +4,7 @@ import { Users, QrCode, CreditCard, BookOpen, LayoutDashboard } from 'lucide-rea
 
 export default function Layout() {
   return (
-    <div className="flex h-screen bg-gray-100 font-sans">
+    <div className="flex h-screen bg-gray-100 dark:bg-slate-900 dark:bg-slate-900 font-sans">
       {/* Sidebar */}
       <aside className="w-64 bg-slate-900 text-white flex flex-col">
         <div className="p-5 text-xl font-bold border-b border-slate-800 text-blue-400">

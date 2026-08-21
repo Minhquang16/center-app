@@ -8,6 +8,7 @@ use App\Models\Invoice;
 use App\Models\Student;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use App\Models\AuditLog;
 
 class InvoiceController extends Controller
 {
@@ -34,6 +35,8 @@ class InvoiceController extends Controller
         // Sinh mã hóa đơn tự động chuẩn POS: HD + Thời gian + ID ngẫu nhiên
         $invoiceCode = 'HD' . date('YmdHis') . rand(10, 99);
 
+        $approvalStatus = $request->payment_method === 'transfer' ? 'pending' : 'approved';
+
         $invoice = Invoice::create([
             'invoice_code'   => $invoiceCode,
             'student_id'     => $student->id,
@@ -41,7 +44,16 @@ class InvoiceController extends Controller
             'amount'         => $request->amount,
             'payment_method' => $request->payment_method,
             'status'         => 'paid',
+            'approval_status'=> $approvalStatus,
             'paid_at'        => Carbon::now(),
+        ]);
+
+        AuditLog::create([
+            'user_id' => $request->user()->id,
+            'student_id' => $student->id,
+            'action' => 'INVOICE_CREATE',
+            'new_data' => json_encode(['amount' => $invoice->amount, 'method' => $invoice->payment_method]),
+            'reason' => 'Tạo hóa đơn thu tiền',
         ]);
 
         // Tạo đường dẫn VietQR động nếu chọn hình thức chuyển khoản
@@ -79,7 +91,7 @@ class InvoiceController extends Controller
                 ->where('status', 'unpaid')
                 ->get();
                 
-            $previousDebt = $unpaidInvoices->sum('final_amount');
+            $previousDebt = $student->debt + $unpaidInvoices->sum('final_amount');
             
             $debtDetails = $unpaidInvoices->map(function($inv) {
                 return [
@@ -90,12 +102,19 @@ class InvoiceController extends Controller
                 ];
             });
 
+            if ($student->debt > 0) {
+                $debtDetails->push([
+                    'month' => null,
+                    'year' => null,
+                    'unpaid_amount' => $student->debt,
+                    'invoice_code' => 'Nợ đầu kỳ'
+                ]);
+            }
+
             // Bước 2: Tiền tháng này
-            $attendedSessions = DB::table('attendances')
-                ->join('class_sessions', 'attendances.session_id', '=', 'class_sessions.id')
-                ->where('attendances.student_id', $id)
-                ->where('attendances.status', 'present')
-                ->whereBetween('class_sessions.session_date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
+            $attendedSessions = \App\Models\Attendance::where('student_id', $id)
+                ->whereIn('status', ['present', 'makeup'])
+                ->whereBetween('checked_at', [$startDate->format('Y-m-d H:i:s'), $endDate->format('Y-m-d H:i:s')])
                 ->count();
                 
             $pricePerSession = collect($student)->get('price_per_session', 130000); // Check if model has it, or DB table
@@ -122,5 +141,46 @@ class InvoiceController extends Controller
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }
+    }
+
+    public function destroy(Request $request, $id)
+    {
+        $invoice = Invoice::findOrFail($id);
+        
+        AuditLog::create([
+            'user_id' => $request->user()->id,
+            'student_id' => $invoice->student_id,
+            'action' => 'INVOICE_DELETE',
+            'old_data' => json_encode(['amount' => $invoice->amount, 'status' => $invoice->status]),
+            'reason' => 'Hoàn tác thu tiền',
+        ]);
+
+        $invoice->delete();
+        return response()->json(['message' => 'Hóa đơn đã được xóa (hoàn tác) thành công.']);
+    }
+
+    public function approve(Request $request, $id)
+    {
+        $invoice = Invoice::findOrFail($id);
+        $invoice->approval_status = 'approved';
+        $invoice->save();
+        
+        AuditLog::create([
+            'user_id' => $request->user()->id,
+            'student_id' => $invoice->student_id,
+            'action' => 'INVOICE_APPROVE',
+            'new_data' => json_encode(['status' => 'approved']),
+            'reason' => 'Duyệt hóa đơn chuyển khoản',
+        ]);
+
+        return response()->json(['message' => 'Hóa đơn đã được duyệt.']);
+    }
+
+    public function reject($id)
+    {
+        $invoice = Invoice::findOrFail($id);
+        $invoice->approval_status = 'rejected';
+        $invoice->save();
+        return response()->json(['message' => 'Hóa đơn đã bị từ chối.']);
     }
 }

@@ -18,6 +18,13 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    
+    // Đính kèm Branch ID nếu Admin đang chọn xem 1 cơ sở cụ thể
+    const activeBranchId = localStorage.getItem('active_branch_id');
+    if (activeBranchId) {
+      config.headers['X-Branch-Id'] = activeBranchId;
+    }
+    
     return config;
   },
   (error) => {
@@ -42,6 +49,13 @@ api.interceptors.response.use(
       if (window.location.pathname !== '/login') {
         window.location.href = '/login';
       }
+    }
+    
+    // Thêm xử lý lỗi 403
+    if (error.response && error.response.status === 403) {
+        // Tạm thời dùng alert vì sonner/toast có thể khó truy cập ngoài React tree, 
+        // ở mức Axios toàn cục, alert hoặc custom event là tốt nhất.
+        alert(error.response.data.message || 'Bạn không có quyền thực hiện thao tác này!');
     }
 
     return Promise.reject(error);

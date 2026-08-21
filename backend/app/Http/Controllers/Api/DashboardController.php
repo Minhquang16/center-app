@@ -65,7 +65,7 @@ class DashboardController extends Controller
         
         $attendanceCounts = Attendance::whereIn('student_id', $unpaidStudentIds)
             ->whereBetween('checked_at', [$startDate, $endDate])
-            ->where('status', 'present')
+            ->whereIn('status', ['present', 'makeup'])
             ->selectRaw('student_id, count(*) as count')
             ->groupBy('student_id')
             ->pluck('count', 'student_id')
@@ -96,19 +96,18 @@ class DashboardController extends Controller
             }
         }
 
-        // 6. BIỂU ĐỒ DOANH THU 12 THÁNG - Tối ưu 1 query (SQLite compatible)
+        // 6. BIỂU ĐỒ DOANH THU 12 THÁNG - Tối ưu 1 query (MySQL compatible)
         $monthlyRevenues = Invoice::whereYear('paid_at', $year)
-            ->selectRaw('strftime("%m", paid_at) as m, sum(amount) as sum')
+            ->selectRaw('MONTH(paid_at) as m, sum(amount) as sum')
             ->groupBy('m')
             ->pluck('sum', 'm')
             ->toArray();
 
         $revenueChart = [];
         for ($m = 1; $m <= 12; $m++) {
-            $monthStr = str_pad($m, 2, '0', STR_PAD_LEFT);
             $revenueChart[] = [
                 'month'   => "T$m",
-                'revenue' => (float)($monthlyRevenues[$monthStr] ?? 0),
+                'revenue' => (float)($monthlyRevenues[$m] ?? $monthlyRevenues[str_pad($m, 2, '0', STR_PAD_LEFT)] ?? 0),
             ];
         }
 
@@ -126,25 +125,30 @@ class DashboardController extends Controller
                 Carbon::createFromDate($year, 12, 20)->endOfDay()
             ])->get(['updated_at']);
 
+        $inCounts = array_fill(1, 12, 0);
+        $outCounts = array_fill(1, 12, 0);
+
+        foreach ($allYearStudentsIn as $s) {
+            $sd = Carbon::parse($s->start_date);
+            $m = $sd->day > 20 ? $sd->month + 1 : $sd->month;
+            if ($m == 13) $m = 1; // if Dec 21, it falls into Jan next year, but we might just ignore or put in T1. Let's ignore it for this year's 12 months chart, or map it. Actually if it's next year, the query above doesn't fetch it because endDate is Dec 20. So $m won't be 13 for current year.
+            if ($m > 12) continue;
+            if (isset($inCounts[$m])) $inCounts[$m]++;
+        }
+
+        foreach ($allYearStudentsOut as $s) {
+            $ud = Carbon::parse($s->updated_at);
+            $m = $ud->day > 20 ? $ud->month + 1 : $ud->month;
+            if ($m > 12) continue;
+            if (isset($outCounts[$m])) $outCounts[$m]++;
+        }
+
         $studentMovementChart = [];
         for ($m = 1; $m <= 12; $m++) {
-            $mEnd   = Carbon::createFromDate($year, $m, 20)->endOfDay();
-            $mStart = Carbon::createFromDate($year, $m, 20)->subMonth()->addDay()->startOfDay();
-
-            $inCount = $allYearStudentsIn->filter(function($s) use ($mStart, $mEnd) {
-                $sd = Carbon::parse($s->start_date);
-                return $sd->between($mStart, $mEnd);
-            })->count();
-
-            $outCount = $allYearStudentsOut->filter(function($s) use ($mStart, $mEnd) {
-                $ud = Carbon::parse($s->updated_at);
-                return $ud->between($mStart, $mEnd);
-            })->count();
-
             $studentMovementChart[] = [
                 'month' => "T$m",
-                'in'    => $inCount,
-                'out'   => $outCount,
+                'in'    => $inCounts[$m],
+                'out'   => $outCounts[$m],
             ];
         }
 

@@ -21,6 +21,6 @@ class AttendanceLog extends Model
 
     public function classroom()
     {
-        return $this->belongsTo(Classroom::class, 'class_id'); // Assuming the class model is actually named Classroom or ClassModel, let me check classes table
+        return $this->belongsTo(ClassModel::class, 'class_id'); 
     }
 }
