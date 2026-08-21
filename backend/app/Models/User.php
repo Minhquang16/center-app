@@ -8,11 +8,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
+use App\Traits\HasBranchScope;
 
 class User extends Authenticatable
 {
     // 2. Thêm HasApiTokens và HasRoles vào danh sách use bên trong class
-    use HasApiTokens, HasFactory, Notifiable, HasRoles;
+    use HasApiTokens, HasFactory, Notifiable, HasRoles, HasBranchScope;
 
     protected $fillable = [
         'name',
