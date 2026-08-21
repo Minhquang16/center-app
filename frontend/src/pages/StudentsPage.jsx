@@ -1365,7 +1365,7 @@ td { border: 1px solid #cbd5e1; padding: 6px 10px; font-size: 10pt; }
             {!isEditing ? (
               <div id="print-area" className="space-y-5 text-slate-800 dark:text-slate-200">
                 <div className="text-center border-b border-slate-200 dark:border-slate-700 pb-4">
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">TRUNG TÂM TOÁN MATH CENTER</p>
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">TRUNG TÂM SUNNY EDUCATION</p>
                   <p className="text-[11px] text-slate-400 uppercase tracking-widest mt-0.5">PHIẾU BÁO CÁO HỌC TẬP HỌC SINH</p>
                   <h2 className="text-2xl font-extrabold text-cyan-800 dark:text-cyan-300 mt-2">{detailStudent.full_name}</h2>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">

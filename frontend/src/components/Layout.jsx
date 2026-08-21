@@ -8,7 +8,7 @@ export default function Layout() {
       {/* Sidebar */}
       <aside className="w-64 bg-slate-900 text-white flex flex-col">
         <div className="p-5 text-xl font-bold border-b border-slate-800 text-blue-400">
-          MATH CENTER POS
+          SUNNY EDUCATION POS
         </div>
         <nav className="flex-1 p-4 space-y-2">
           <Link to="/" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-slate-800 text-gray-300 hover:text-white">

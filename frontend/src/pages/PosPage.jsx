@@ -711,7 +711,7 @@ export default function PosPage() {
 
               {/* KHUNG PHIẾU THU K80 */}
               <div id="print-invoice" className="border-2 border-dashed border-slate-300 dark:border-slate-600 dark:border-slate-600 p-4 rounded-xl text-left font-mono text-xs space-y-1.5 text-slate-800 dark:text-slate-200 dark:text-slate-200 bg-slate-50 dark:bg-slate-900/50 dark:bg-slate-900/50">
-                <p className="text-center font-black text-sm uppercase text-slate-900 dark:text-white">MATH CENTER POS</p>
+                <p className="text-center font-black text-sm uppercase text-slate-900 dark:text-white">SUNNY EDUCATION POS</p>
                 <p className="text-center text-[10px] text-slate-500 dark:text-slate-400 dark:text-slate-400 uppercase tracking-widest border-b pb-2">PHIẾU XÁC NHẬN THU HỌC PHÍ</p>
                 
                 <div className="pt-2 space-y-1">

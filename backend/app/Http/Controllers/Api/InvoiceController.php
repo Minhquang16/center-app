@@ -61,7 +61,7 @@ class InvoiceController extends Controller
         if ($request->payment_method === 'transfer') {
             $bankId  = 'MB'; // Mã ngân hàng (MBBank, VCB, ICB, VPB...)
             $account = '0987654321'; // Số tài khoản trung tâm
-            $name    = urlencode('MATH CENTER');
+            $name    = urlencode('SUNNY EDUCATION');
             $addInfo = urlencode("HP " . $student->student_code);
             $qrUrl   = "https://img.vietqr.io/image/{$bankId}-{$account}-compact2.png?amount={$request->amount}&addInfo={$addInfo}&accountName={$name}";
         }
