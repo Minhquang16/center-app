@@ -359,7 +359,7 @@ function ClassOverview() {
   return (
     <div className="space-y-6">
       {/* Học sinh học ngày hôm nay */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-blue-700 to-blue-500 rounded-3xl p-6 text-white shadow-lg shadow-blue-500/20">
+      <div className="relative overflow-hidden bg-blue-600 bg-gradient-to-r from-blue-700 to-blue-500 rounded-3xl p-6 text-white shadow-lg shadow-blue-500/20">
         {/* Background decorative icons */}
         <div className="absolute right-4 -bottom-4 opacity-10 pointer-events-none transition-transform">
           <div className="relative">
