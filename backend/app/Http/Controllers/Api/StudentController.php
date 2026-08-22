@@ -488,6 +488,15 @@ class StudentController extends Controller
 
     public function importExcel(Request $request)
     {
+        $requestedBranchId = $request->header('X-Branch-Id');
+        $user = \Illuminate\Support\Facades\Auth::user();
+        
+        // Nếu user thường không có branch_id thì không cho import (đã bắt ở middleware)
+        // Nếu admin đang chọn 'all' thì cũng chặn lại
+        if (($user->branch_id === null) && (empty($requestedBranchId) || $requestedBranchId === 'all')) {
+            return response()->json(['message' => 'Vui lòng chọn một Cơ sở cụ thể ở góc dưới bên trái màn hình trước khi tải file Excel lên (Không chọn "Tất cả cơ sở").'], 422);
+        }
+
         $request->validate([
             'file' => 'required|mimes:xlsx,xls,csv|max:10240'
         ]);

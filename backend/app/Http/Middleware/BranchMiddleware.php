@@ -24,7 +24,7 @@ class BranchMiddleware
                 // Kiểm tra xem frontend có gửi Header yêu cầu xem 1 cơ sở cụ thể không
                 $requestedBranchId = $request->header('X-Branch-Id');
                 
-                if ($requestedBranchId) {
+                if ($requestedBranchId && $requestedBranchId !== 'all') {
                     // Lưu vào config để Global Scope có thể đọc được
                     config(['app.active_branch_id' => $requestedBranchId]);
                 }
