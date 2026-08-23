@@ -17,6 +17,9 @@ class StudentController extends Controller
     public function index(Request $request)
     {
         try {
+            $user = auth('sanctum')->user();
+            $isAdmin = $user && $user->email === 'admin@gmail.com';
+
             $grade        = $request->get('grade');
             $classType    = $request->get('class_type');
             $shift        = $request->get('shift');
@@ -223,9 +226,11 @@ class StudentController extends Controller
                 $activeShiftData = (!empty($shift) && isset($shifts[$shift])) ? $shifts[$shift] : null;
                 $activeAtt = $activeShiftData ? $selectedDayAttendances->firstWhere('id', $activeShiftData['id']) : $selectedDayAttendances->last();
                 
-                // Chỉ cho phép hủy điểm danh khi là HÔM NAY và chưa quá 15 phút sau khi kết thúc ca
+                // Chỉ cho phép giáo viên hủy điểm danh khi là HÔM NAY và chưa quá 15 phút sau khi kết thúc ca. Admin được quyền hủy tự do.
                 $canCancel = false;
-                if ($isToday) {
+                if ($isAdmin) {
+                    $canCancel = true;
+                } else if ($isToday) {
                     $canCancel = true;
                     if ($shift && preg_match('/-\s*(\d{1,2}):(\d{2})/', $shift, $matches)) {
                         $lockTime = ((int)$matches[1]) * 60 + ((int)$matches[2]) + 15;
