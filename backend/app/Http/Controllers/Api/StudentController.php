@@ -284,9 +284,9 @@ class StudentController extends Controller
                 
                 $attShift = $att->shift ?? 'ca_cu';
 
-                if (!empty($shift) && $attShift !== $shift) {
-                    continue;
-                }
+                // if (!empty($shift) && $attShift !== $shift) {
+                //     continue;
+                // }
 
                 if (in_array($att->student_id, $processedStudents)) {
                     continue;
