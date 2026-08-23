@@ -135,6 +135,15 @@ class AttendanceController extends Controller
                 }
             }
 
+            $requestedBranch = config('app.active_branch_id');
+            if (!$requestedBranch) {
+                $requestedBranch = $user->branch_id;
+            }
+
+            if (!$requestedBranch || $requestedBranch === 'all') {
+                return response()->json(['message' => 'Vui lòng chọn một Cơ sở cụ thể ở góc dưới bên trái màn hình (Không chọn "Tất cả cơ sở") trước khi điểm danh.'], 422);
+            }
+
             $insertData = [];
             foreach ($newStudentIds as $id) {
                 $student = $students->get($id);
@@ -143,6 +152,7 @@ class AttendanceController extends Controller
                 $insertData[] = [
                     'student_id'     => $id,
                     'class_id'       => $request->class_id,
+                    'branch_id'      => $requestedBranch,
                     'shift'          => $targetShift,
                     'created_by'     => $userId,
                     'checked_at'     => $checkedAt,

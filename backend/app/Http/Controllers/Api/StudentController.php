@@ -498,11 +498,18 @@ class StudentController extends Controller
         }
 
         $request->validate([
-            'file' => 'required|mimes:xlsx,xls,csv|max:10240'
+            'file' => 'required|file|max:10240'
         ]);
 
+        $file = $request->file('file');
+        $extension = strtolower($file->getClientOriginalExtension());
+        
+        if (!in_array($extension, ['xlsx', 'xls', 'csv'])) {
+            return response()->json(['message' => 'File không đúng định dạng. Vui lòng tải lên file .xlsx, .xls hoặc .csv (File hiện tại: ' . $extension . ')'], 422);
+        }
+
         try {
-            Excel::import(new StudentsImport, $request->file('file'));
+            Excel::import(new StudentsImport, $file);
             return response()->json(['message' => 'Import thành công']);
         } catch (\Exception $e) {
             return response()->json(['message' => 'Lỗi import: ' . $e->getMessage()], 500);

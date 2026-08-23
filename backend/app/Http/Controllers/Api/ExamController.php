@@ -147,14 +147,21 @@ class ExamController extends Controller
     public function importExcel(Request $request, $id)
     {
         $request->validate([
-            'file' => 'required|mimes:xlsx,xls,csv'
+            'file' => 'required|file|max:10240'
         ]);
+
+        $file = $request->file('file');
+        $extension = strtolower($file->getClientOriginalExtension());
+        
+        if (!in_array($extension, ['xlsx', 'xls', 'csv'])) {
+            return response()->json(['message' => 'File không đúng định dạng. Vui lòng tải lên file .xlsx, .xls hoặc .csv'], 422);
+        }
 
         $exam = Exam::findOrFail($id);
 
         try {
             $import = new ExamCandidatesImport($id);
-            Excel::import($import, $request->file('file'));
+            Excel::import($import, $file);
 
             $count = $import->getAddedCount();
             return response()->json(['message' => "Đã import và thêm {$count} thí sinh vào kỳ thi"]);
