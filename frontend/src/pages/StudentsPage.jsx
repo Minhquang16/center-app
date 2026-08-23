@@ -1978,7 +1978,7 @@ td { border: 1px solid #cbd5e1; padding: 6px 10px; font-size: 10pt; }
                     <div key={idx} className="flex items-center space-x-2">
                       <label className="w-20 text-sm font-semibold">Bài {idx + 1}:</label>
                       <input
-                        type="number" step="0.1" min="0" max="10"
+                        type="number" step="any" min="0" max="10"
                         className="border rounded p-1.5 w-full text-sm focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400"
                         value={testScore}
                         onChange={(e) => {
@@ -2028,7 +2028,7 @@ td { border: 1px solid #cbd5e1; padding: 6px 10px; font-size: 10pt; }
                     <div className="w-1/3">
                       <label className="block text-sm font-semibold mb-1">Điểm</label>
                       <input
-                        type="number" step="0.1" min="0" max="10"
+                        type="number" step="any" min="0" max="10"
                         className="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400"
                         value={scoreModalData.hwScore}
                         onChange={(e) => setScoreModalData({ ...scoreModalData, hwScore: e.target.value })}

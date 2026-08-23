@@ -608,7 +608,7 @@ export default function ExamsPage() {
                                 type="number"
                                 min="0"
                                 max="10"
-                                step="0.25"
+                                step="any"
                                 disabled={selectedExam.status === 'completed' || editingScores[c.id]?.is_absent}
                                 className="w-16 p-1 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 disabled:opacity-50"
                                 value={editingScores[c.id]?.scores?.[subj.name] || ''}

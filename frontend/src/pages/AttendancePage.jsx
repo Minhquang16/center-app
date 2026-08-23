@@ -60,6 +60,12 @@ export default function AttendancePage() {
     fetchTodayLogs();
     fetchClasses();
     keepInputFocused();
+
+    // Cập nhật nhật ký điểm danh theo thời gian thực (Polling 10s/lần)
+    const interval = setInterval(() => {
+      fetchTodayLogs();
+    }, 10000);
+    return () => clearInterval(interval);
   }, []);
 
   // Giữ ô nhập mã luôn được Focus để máy quét QR hoạt động tự động
