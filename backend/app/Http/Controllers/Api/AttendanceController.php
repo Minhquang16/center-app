@@ -88,11 +88,21 @@ class AttendanceController extends Controller
             'is_makeup'     => 'nullable|boolean',
         ]);
 
-        $targetDate = $request->date ? Carbon::parse($request->date) : Carbon::today();
-        $checkedAt = $request->date && $targetDate->isPast() && !$targetDate->isToday() 
-                     ? $targetDate->setTime(18, 0, 0) 
-                     : Carbon::now();
         $now = Carbon::now();
+        $targetDate = $request->date ? Carbon::parse($request->date) : Carbon::today();
+        
+        if ($request->date && $targetDate->isPast() && !$targetDate->isToday()) {
+            if ($request->shift) {
+                $shiftMins = $this->getShiftStartTime($targetDate, $request->shift);
+                $h = floor($shiftMins / 60);
+                $m = $shiftMins % 60;
+                $checkedAt = $targetDate->copy()->setTime($h, $m, 0);
+            } else {
+                $checkedAt = $targetDate->copy()->setTime(18, 0, 0);
+            }
+        } else {
+            $checkedAt = Carbon::now();
+        }
         
         $user = auth('sanctum')->user();
         $diffDays = Carbon::today()->diffInDays($targetDate->copy()->startOfDay(), false);
