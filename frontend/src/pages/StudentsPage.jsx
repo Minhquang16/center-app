@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api/axios';
 import { toast } from 'sonner';
+import { useLocation } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import {
   UserPlus, Upload, CheckSquare, X, RotateCcw, Filter, Eye, Award,
@@ -36,9 +37,23 @@ export default function StudentsPage() {
   const [loading, setLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
 
+  const location = useLocation();
+
   const [selectedDate, setSelectedDate] = useState(getLocalDateString());
   const [selectedGrade, setSelectedGrade] = useState('');
   const [selectedClassType, setSelectedClassType] = useState('');
+  
+  // Read state from location (navigation from Classes page)
+  useEffect(() => {
+    if (location.state) {
+      if (location.state.grade) setSelectedGrade(location.state.grade);
+      if (location.state.classType) setSelectedClassType(location.state.classType);
+      
+      // Also clear search term when coming from another page
+      setSearchTerm('');
+    }
+  }, [location.state]);
+
   const [selectedShift, setSelectedShift] = useState(getCurrentShift());
   const [searchTerm, setSearchTerm] = useState('');
   const deferredSearchTerm = React.useDeferredValue(searchTerm);

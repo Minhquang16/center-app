@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Users, Shield, Calendar, Clock, BookOpen, ChevronRight, CheckCircle2, Plus, Edit, Trash2, X } from 'lucide-react';
 import api from '../api/axios';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 
 import StudentsPage from './StudentsPage';
 import UsersPage from './UsersPage';
 
 function ClassOverview() {
+  const navigate = useNavigate();
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedClass, setSelectedClass] = useState(null);
@@ -375,7 +377,18 @@ function ClassOverview() {
           {todayClasses.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {todayClasses.map(c => (
-                <div key={c.id} onClick={() => openClassDetail(c)} className="bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/20 rounded-2xl p-4 cursor-pointer transition-all">
+                <div key={c.id} onClick={() => {
+                  let grade = c.grade || '';
+                  let classType = '';
+                  if (c.class_code) {
+                    const parts = c.class_code.split('-');
+                    if (parts.length >= 2) {
+                      grade = parts[0];
+                      classType = parts.slice(1).join('-');
+                    }
+                  }
+                  navigate('/students', { state: { grade, classType } });
+                }} className="bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/20 rounded-2xl p-4 cursor-pointer transition-all">
                   <h3 className="font-bold text-lg">{c.name}</h3>
                   <div className="text-cyan-100 text-sm mt-1">{c.class_code}</div>
                   <div className="mt-3 flex items-center justify-between text-sm">
