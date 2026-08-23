@@ -57,20 +57,20 @@ class StudentController extends Controller
             $search = $request->get('search');
             $query = Student::where('status', '!=', 'dropped');
             
-            if (!empty($classType)) {
-                $query->where('class_type', $classType);
+            if (empty($search)) {
+                if (!empty($classType)) {
+                    $query->where('class_type', $classType);
+                } else {
+                    $query->where(function($q) {
+                        $q->where('class_type', '!=', 'Vãng lai')
+                          ->orWhereNull('class_type');
+                    });
+                }
+
+                if (!empty($grade)) {
+                    $query->where('grade', $grade);
+                }
             } else {
-                $query->where(function($q) {
-                    $q->where('class_type', '!=', 'Vãng lai')
-                      ->orWhereNull('class_type');
-                });
-            }
-
-            if (!empty($grade)) {
-                $query->where('grade', $grade);
-            }
-
-            if (!empty($search)) {
                 $query->where(function($q) use ($search) {
                     $q->where('full_name', 'LIKE', '%' . $search . '%')
                       ->orWhere('student_code', 'LIKE', '%' . $search . '%');
