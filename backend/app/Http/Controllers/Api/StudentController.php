@@ -66,13 +66,15 @@ class StudentController extends Controller
                 });
             }
 
+            if (!empty($grade)) {
+                $query->where('grade', $grade);
+            }
+
             if (!empty($search)) {
                 $query->where(function($q) use ($search) {
                     $q->where('full_name', 'LIKE', '%' . $search . '%')
                       ->orWhere('student_code', 'LIKE', '%' . $search . '%');
                 });
-            } else {
-                if (!empty($grade)) $query->where('grade', $grade);
             }
 
             $students = $query->get()->map(function($student) {
