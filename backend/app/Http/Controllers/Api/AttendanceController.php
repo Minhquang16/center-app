@@ -37,6 +37,16 @@ class AttendanceController extends Controller
             return response()->json(['message' => "Chưa đến giờ điểm danh của Ca " . preg_replace('/[^0-9]/', '', $normalizedShift) . ". Vui lòng đợi đến giờ vào ca!"], 400);
         }
 
+        // Kiểm tra chống điểm danh trùng lặp trong cùng 1 ca
+        $alreadyChecked = Attendance::where('student_id', $student->id)
+            ->whereDate('checked_at', Carbon::today())
+            ->where('shift', $request->shift)
+            ->exists();
+
+        if ($alreadyChecked) {
+            return response()->json(['message' => 'Học sinh này đã điểm danh ca này rồi!'], 400);
+        }
+
         // Lấy giá tiền 1 buổi hiện tại của học sinh (mặc định 130.000đ nếu chưa cài)
         $currentFee = $student->price_per_session ?? 130000;
         $userId = auth('sanctum')->id(); // Get logged in user
@@ -123,10 +133,13 @@ class AttendanceController extends Controller
 
             $studentIds = $request->student_ids;
             $userId = $user->id;
+            
+            $targetShift = $request->shift ?: $this->getShiftFromTime($checkedAt);
 
-            // Bỏ qua những bạn đã điểm danh trong ngày mục tiêu rồi
+            // Bỏ qua những bạn đã điểm danh trong ca mục tiêu của ngày đó rồi
             $alreadyChecked = Attendance::whereIn('student_id', $studentIds)
                 ->whereDate('checked_at', $targetDate)
+                ->where('shift', $targetShift)
                 ->pluck('student_id')
                 ->toArray();
 
@@ -134,8 +147,6 @@ class AttendanceController extends Controller
 
             // Lấy thông tin học sinh để gán học phí chuẩn từng người
             $students = Student::whereIn('id', $newStudentIds)->get()->keyBy('id');
-
-            $targetShift = $request->shift ?: $this->getShiftFromTime($checkedAt);
 
             if ($targetDate->isToday()) {
                 $mins = $now->hour * 60 + $now->minute;

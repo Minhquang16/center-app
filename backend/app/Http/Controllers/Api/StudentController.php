@@ -224,7 +224,11 @@ class StudentController extends Controller
                 }
 
                 $activeShiftData = (!empty($shift) && isset($shifts[$shift])) ? $shifts[$shift] : null;
-                $activeAtt = $activeShiftData ? $selectedDayAttendances->firstWhere('id', $activeShiftData['id']) : $selectedDayAttendances->last();
+                if (!empty($shift)) {
+                    $activeAtt = $activeShiftData ? $selectedDayAttendances->firstWhere('id', $activeShiftData['id']) : null;
+                } else {
+                    $activeAtt = $selectedDayAttendances->last();
+                }
                 
                 // Chỉ cho phép giáo viên hủy điểm danh khi là HÔM NAY và chưa quá 15 phút sau khi kết thúc ca. Admin được quyền hủy tự do.
                 $canCancel = false;

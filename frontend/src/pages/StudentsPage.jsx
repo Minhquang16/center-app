@@ -200,7 +200,7 @@ export default function StudentsPage() {
       let data = Array.isArray(res.data) ? res.data : (res.data?.data || []);
 
       const parsedStudents = data.map(s => {
-        const activeAtt = s.active_shift_attendance || s.today_attendance;
+        const activeAtt = s.active_shift_attendance;
         let rankScore = { hasHw: false, totalTestScore: 0, hwStatus: '', rawScore: null };
         if (activeAtt) {
           try {
@@ -224,8 +224,8 @@ export default function StudentsPage() {
 
       // Sort logic
       parsedStudents.sort((a, b) => {
-        const aAttended = !!(a.active_shift_attendance || a.today_attendance);
-        const bAttended = !!(b.active_shift_attendance || b.today_attendance);
+        const aAttended = !!(a.active_shift_attendance);
+        const bAttended = !!(b.active_shift_attendance);
         if (aAttended !== bAttended) return aAttended ? -1 : 1;
 
         if (a.rankScore.hasHw !== b.rankScore.hasHw) {
@@ -239,7 +239,7 @@ export default function StudentsPage() {
       let prevRankScore = null;
       
       parsedStudents.forEach((s, idx) => {
-        const activeAtt = s.active_shift_attendance || s.today_attendance;
+        const activeAtt = s.active_shift_attendance;
         if (!activeAtt) {
           s.session_rank = '-';
           return;
@@ -342,7 +342,7 @@ export default function StudentsPage() {
   };
 
   const handleOpenScoreModal = (student) => {
-    const activeAtt = student.active_shift_attendance || student.today_attendance;
+    const activeAtt = student.active_shift_attendance;
     if (!activeAtt) return toast.warning('Học sinh chưa được điểm danh!');
 
     setScoreModalData({
@@ -453,9 +453,9 @@ td { border: 1px solid #cbd5e1; padding: 6px 10px; font-size: 10pt; }
 <tbody>
 `;
 
-    const checkedInStudents = students.filter(s => s.active_shift_attendance || s.today_attendance);
+    const checkedInStudents = students.filter(s => s.active_shift_attendance);
     checkedInStudents.forEach((s, index) => {
-      const att = s.active_shift_attendance || s.today_attendance;
+      const att = s.active_shift_attendance;
       const attStatus = 'Đã đến lớp';
 
       let scoreStr = '-';
@@ -625,8 +625,8 @@ td { border: 1px solid #cbd5e1; padding: 6px 10px; font-size: 10pt; }
     window.print();
   };
 
-  const unattendedSelectedIds = students.filter((s) => selectedIds.includes(s.id) && !s.today_attendance).map((s) => s.id);
-  const attendedSelectedIds = students.filter((s) => selectedIds.includes(s.id) && s.today_attendance && s.can_cancel_attendance).map((s) => s.id);
+  const unattendedSelectedIds = students.filter((s) => selectedIds.includes(s.id) && !s.active_shift_attendance).map((s) => s.id);
+  const attendedSelectedIds = students.filter((s) => selectedIds.includes(s.id) && s.active_shift_attendance && s.can_cancel_attendance).map((s) => s.id);
 
   const handleBulkAttendance = async () => {
     if (unattendedSelectedIds.length === 0) return;
@@ -1044,7 +1044,7 @@ td { border: 1px solid #cbd5e1; padding: 6px 10px; font-size: 10pt; }
                 <tr><td colSpan="11" className="p-6 text-center text-slate-500 dark:text-slate-400 font-medium">Không tìm thấy học sinh phù hợp.</td></tr>
               ) : (
                 paginatedStudents.map((s) => {
-                  const activeAtt = s.active_shift_attendance || s.today_attendance;
+                  const activeAtt = s.active_shift_attendance;
                   const attId = activeAtt?.id;
                   const shifts = s.today_shifts || {};
 
@@ -1195,7 +1195,7 @@ td { border: 1px solid #cbd5e1; padding: 6px 10px; font-size: 10pt; }
               <div className="text-center text-slate-500 py-4 font-medium">Không tìm thấy học sinh phù hợp.</div>
             ) : (
               filteredStudents.slice(0, visibleMobileCount).map((s) => {
-                const activeAtt = s.active_shift_attendance || s.today_attendance;
+                const activeAtt = s.active_shift_attendance;
                 const attId = activeAtt?.id;
                 const shifts = s.today_shifts || {};
 
