@@ -377,18 +377,18 @@ export default function ExamsPage() {
     return ranks;
   }, [candidates, editingScores, selectedExam]);
 
+  // Filter candidates by room with Memoization for performance
+  const filteredCandidates = React.useMemo(() => {
+    return candidates.filter(c => {
+      if (!roomFilter) return true;
+      if (roomFilter === 'unassigned') return !c.exam_room_id;
+      return c.exam_room_id?.toString() === roomFilter;
+    });
+  }, [candidates, roomFilter]);
+
   // RENDER DETAILS VIEW
   if (selectedExam) {
     const showTotal = selectedExam.display_settings?.show_total !== false;
-    
-    // Filter candidates by room with Memoization for performance
-    const filteredCandidates = React.useMemo(() => {
-      return candidates.filter(c => {
-        if (!roomFilter) return true;
-        if (roomFilter === 'unassigned') return !c.exam_room_id;
-        return c.exam_room_id?.toString() === roomFilter;
-      });
-    }, [candidates, roomFilter]);
 
     return (
       <div className="space-y-6">
