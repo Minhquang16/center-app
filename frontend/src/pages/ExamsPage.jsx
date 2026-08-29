@@ -783,6 +783,15 @@ export default function ExamsPage() {
           </div>
         )}
 
+        {showRoomManager && (
+          <ExamRoomManager 
+            exam={selectedExam}
+            candidates={candidates}
+            onClose={() => setShowRoomManager(false)}
+            onRefresh={() => fetchExamDetails(selectedExam.id)}
+          />
+        )}
+
       </div>
     );
   }
