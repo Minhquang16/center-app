@@ -124,7 +124,7 @@ class StudentController extends Controller
                 ->get()
                 ->groupBy('student_id');
 
-            $allTodayAttendances = Attendance::select('id', 'student_id', 'status', 'score', 'homework_status', 'checked_at')
+            $allTodayAttendances = Attendance::select('id', 'student_id', 'status', 'score', 'homework_status', 'checked_at', 'shift')
                 ->whereIn('student_id', $studentIds)
                 ->whereDate('checked_at', $targetDate)
                 ->get()
