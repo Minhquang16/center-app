@@ -453,14 +453,13 @@ td { border: 1px solid #cbd5e1; padding: 6px 10px; font-size: 10pt; }
 <tbody>
 `;
 
-    const checkedInStudents = students.filter(s => s.active_shift_attendance);
-    checkedInStudents.forEach((s, index) => {
+    students.forEach((s, index) => {
       const att = s.active_shift_attendance;
-      const attStatus = 'Đã đến lớp';
+      const attStatus = att ? 'Đã đến lớp' : 'Chưa điểm danh';
 
       let scoreStr = '-';
       let hwStr = '-';
-      if (s.rankScore) {
+      if (att && s.rankScore) {
         if (s.rankScore.rawScore && Array.isArray(s.rankScore.rawScore.tests)) {
           const tests = s.rankScore.rawScore.tests;
           const validTests = tests.filter(v => v !== null && v !== undefined && String(v).trim() !== '');
@@ -487,7 +486,7 @@ td { border: 1px solid #cbd5e1; padding: 6px 10px; font-size: 10pt; }
 <td class="text-center">${attStatus}</td>
 <td class="text-center text-bold">${scoreStr}</td>
 <td class="text-center">${hwStr}</td>
-<td class="text-center text-bold">${s.rankScore?.totalTestScore ? (Math.round(s.rankScore.totalTestScore * 100) / 100) : 0}</td>
+<td class="text-center text-bold">${att ? (s.rankScore?.totalTestScore ? (Math.round(s.rankScore.totalTestScore * 100) / 100) : 0) : '-'}</td>
 <td class="text-center text-bold">${s.session_rank || '-'}</td>
 </tr>
 `;
