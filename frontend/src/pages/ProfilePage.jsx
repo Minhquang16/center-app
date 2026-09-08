@@ -1,23 +1,25 @@
-import React, { useState, useEffect } from 'react';
-import { User, Mail, Lock, Save, Shield } from 'lucide-react';
-import api from '../api/axios';
-import { toast } from 'sonner';
+import React, { useState, useEffect } from "react";
+import { User, Mail, Lock, Save, Shield } from "lucide-react";
+import api from "../api/axios";
+import { toast } from "sonner";
 
 export default function ProfilePage() {
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: ''
+    name: "",
+    email: "",
+    password: "",
   });
-  
-  const [user, setUser] = useState(JSON.parse(localStorage.getItem('user') || '{}'));
+
+  const [user, setUser] = useState(
+    JSON.parse(localStorage.getItem("user") || "{}"),
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     setFormData({
-      name: user.name || '',
-      email: user.email || '',
-      password: ''
+      name: user.name || "",
+      email: user.email || "",
+      password: "",
     });
   }, [user]);
 
@@ -28,31 +30,32 @@ export default function ProfilePage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
+
     try {
       // Gọi API cập nhật profile
-      const response = await api.put('/profile', formData);
-      toast.success('Cập nhật thông tin thành công!');
-      
+      const response = await api.put("/profile", formData);
+      toast.success("Cập nhật thông tin thành công!");
+
       // Cập nhật localStorage và state
       const updatedUser = { ...user, ...response.data.user };
-      localStorage.setItem('user', JSON.stringify(updatedUser));
+      localStorage.setItem("user", JSON.stringify(updatedUser));
       setUser(updatedUser);
-      setFormData(prev => ({ ...prev, password: '' })); // Reset password field
+      setFormData((prev) => ({ ...prev, password: "" })); // Reset password field
     } catch (error) {
-      console.error("Lỗi cập nhật profile:", error);
-      toast.error(error.response?.data?.message || 'Không thể cập nhật thông tin');
+      toast.error(
+        error.response?.data?.message || "Không thể cập nhật thông tin",
+      );
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const getRoleName = (user) => {
-    if (user.roles?.includes('admin')) return 'Quản trị viên';
+    if (user.roles?.includes("admin")) return "Quản trị viên";
     if (user.roles?.[0]) {
       return user.roles[0];
     }
-    return 'Thành viên';
+    return "Thành viên";
   };
 
   return (
@@ -73,11 +76,10 @@ export default function ProfilePage() {
       </div>
 
       <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-sm dark:shadow-none dark:shadow-none border border-slate-100 dark:border-slate-700/50 dark:border-slate-700/50 dark:border-slate-700 p-6 md:p-8 max-w-2xl mx-auto">
-        
         {/* Avatar Placeholder */}
         <div className="flex flex-col items-center mb-8">
           <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-orange-400 to-amber-300 flex items-center justify-center text-white text-3xl font-bold shadow-lg dark:shadow-none dark:shadow-none shadow-orange-500/30 mb-4">
-            {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
+            {user.name ? user.name.charAt(0).toUpperCase() : "U"}
           </div>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 dark:text-slate-300 dark:text-slate-300 capitalize">
             <Shield className="w-4 h-4 text-orange-500" />
@@ -88,7 +90,8 @@ export default function ProfilePage() {
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-1.5">
             <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 dark:text-slate-300 dark:text-slate-300 flex items-center gap-1.5">
-              <User className="w-4 h-4" /> Họ và tên <span className="text-rose-500">*</span>
+              <User className="w-4 h-4" /> Họ và tên{" "}
+              <span className="text-rose-500">*</span>
             </label>
             <input
               type="text"
@@ -103,7 +106,8 @@ export default function ProfilePage() {
 
           <div className="space-y-1.5">
             <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 dark:text-slate-300 dark:text-slate-300 flex items-center gap-1.5">
-              <Mail className="w-4 h-4" /> Email đăng nhập <span className="text-rose-500">*</span>
+              <Mail className="w-4 h-4" /> Email đăng nhập{" "}
+              <span className="text-rose-500">*</span>
             </label>
             <input
               type="email"
@@ -138,7 +142,7 @@ export default function ProfilePage() {
               className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white px-5 py-3 rounded-xl font-bold transition-all shadow-lg dark:shadow-none dark:shadow-none shadow-orange-500/30 disabled:opacity-70"
             >
               <Save className="w-5 h-5" />
-              {isSubmitting ? 'Đang lưu...' : 'Lưu Thay Đổi'}
+              {isSubmitting ? "Đang lưu..." : "Lưu Thay Đổi"}
             </button>
           </div>
         </form>
