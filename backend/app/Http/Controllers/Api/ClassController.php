@@ -53,11 +53,21 @@ class ClassController extends Controller
     {
         $class = \App\Models\ClassModel::findOrFail($id);
         
-        // Chỉ đếm số buổi học cho danh sách học sinh (để hiển thị chi tiết lớp)
+        $month = now()->month;
+        $year  = now()->year;
+        
+        if (now()->day > 20) {
+            $startDate = \Carbon\Carbon::createFromDate($year, $month, 21)->startOfDay();
+            $endDate   = \Carbon\Carbon::createFromDate($year, $month, 20)->addMonth()->endOfDay();
+        } else {
+            $startDate = \Carbon\Carbon::createFromDate($year, $month, 21)->subMonth()->startOfDay();
+            $endDate   = \Carbon\Carbon::createFromDate($year, $month, 20)->endOfDay();
+        }
+
+        // Chỉ đếm số buổi học cho danh sách học sinh (để hiển thị chi tiết lớp) theo kỳ học phí
         $students = \App\Models\Student::where('status', '!=', 'dropped')
-            ->withCount(['attendances as attended_this_month' => function ($query) {
-                $query->whereMonth('checked_at', now()->month)
-                      ->whereYear('checked_at', now()->year)
+            ->withCount(['attendances as attended_this_month' => function ($query) use ($startDate, $endDate) {
+                $query->whereBetween('checked_at', [$startDate, $endDate])
                       ->whereIn('status', ['present', 'makeup']);
             }])
             ->get(['id', 'full_name', 'student_code', 'grade', 'class_type', 'parent_name', 'parent_phone']);

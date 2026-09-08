@@ -228,11 +228,12 @@ export default function DashboardPage() {
           "SĐT": s.parent_phone,
           "Số buổi học": s.total_sessions,
           "Tiền tháng này (VNĐ)": s.expected_fee,
-          "Nợ cũ (VNĐ)": s.previous_debt || 0,
+          "Nợ tháng trước (VNĐ)": s.last_month_debt || 0,
+          "Nợ đọng năm (VNĐ)": s.yearly_debt || 0,
           "Tổng tiền (VNĐ)": s.total_amount || s.expected_fee
         }));
         const wsUnpaid = XLSX.utils.json_to_sheet(classData);
-        wsUnpaid['!cols'] = [{ wch: 5 }, { wch: 15 }, { wch: 25 }, { wch: 10 }, { wch: 10 }, { wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 20 }, { wch: 20 }];
+        wsUnpaid['!cols'] = [{ wch: 5 }, { wch: 15 }, { wch: 25 }, { wch: 10 }, { wch: 10 }, { wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 20 }];
         
         // Tên sheet trong Excel chỉ cho phép tối đa 31 ký tự và không chứa ký tự đặc biệt
         let sheetName = `Nợ - ${className}`.replace(/[\\/?*\[\]:]/g, '');

@@ -2095,15 +2095,21 @@ td { border: 1px solid #cbd5e1; padding: 6px 10px; font-size: 10pt; }
             <h2 className="text-lg font-bold mb-4 text-slate-900 dark:text-white border-b pb-2">Chi tiết Học Phí</h2>
             <div className="space-y-4 text-sm text-slate-700 dark:text-slate-300">
               <div className="flex justify-between">
-                <span>Nợ cũ (Tháng trước):</span>
-                <span className="font-bold text-rose-600">
-                  {Number(tuitionDetailModal.previous_debt || 0).toLocaleString('vi-VN')} đ
-                </span>
-              </div>
-              <div className="flex justify-between">
                 <span>Học phí phát sinh (Tháng {cycleInfo?.month}):</span>
                 <span className="font-bold text-slate-800 dark:text-slate-200">
                   {Number(tuitionDetailModal.total_tuition_in_cycle || 0).toLocaleString('vi-VN')} đ
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Nợ tháng trước:</span>
+                <span className="font-bold text-rose-600">
+                  {Number(tuitionDetailModal.last_month_debt || 0).toLocaleString('vi-VN')} đ
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Nợ đọng (năm):</span>
+                <span className="font-bold text-rose-700">
+                  {Number(tuitionDetailModal.yearly_debt || 0).toLocaleString('vi-VN')} đ
                 </span>
               </div>
               <div className="border-t pt-3 flex justify-between font-bold text-base">

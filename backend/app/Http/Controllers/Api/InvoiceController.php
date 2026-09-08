@@ -93,6 +93,24 @@ class InvoiceController extends Controller
                 
             $previousDebt = $student->debt + $unpaidInvoices->sum('final_amount');
             
+            $lastMonthDebt = 0;
+            $yearlyDebt = $student->debt ?? 0;
+            
+            $lastMonth = $currentMonth - 1;
+            $lastMonthYear = $currentYear;
+            if ($lastMonth == 0) {
+                $lastMonth = 12;
+                $lastMonthYear = $currentYear - 1;
+            }
+
+            foreach ($unpaidInvoices as $inv) {
+                if ($inv->billing_month == $lastMonth && $inv->billing_year == $lastMonthYear) {
+                    $lastMonthDebt += $inv->final_amount;
+                } else {
+                    $yearlyDebt += $inv->final_amount;
+                }
+            }
+            
             $debtDetails = $unpaidInvoices->map(function($inv) {
                 return [
                     'month' => $inv->billing_month,
@@ -134,6 +152,8 @@ class InvoiceController extends Controller
                 'price_per_session' => (float)$pricePerSession,
                 'current_fee' => (float)$currentFee,
                 'previous_debt' => (float)$previousDebt,
+                'last_month_debt' => (float)$lastMonthDebt,
+                'yearly_debt' => (float)$yearlyDebt,
                 'final_amount' => (float)$finalAmount,
                 'has_debt' => $previousDebt > 0,
                 'debt_details' => $debtDetails

@@ -71,13 +71,20 @@ class DashboardController extends Controller
             ->pluck('count', 'student_id')
             ->toArray();
 
-        $allUnpaidInvoices = Invoice::select('student_id', 'final_amount')
+        $allUnpaidInvoices = Invoice::select('student_id', 'final_amount', 'billing_month', 'billing_year')
             ->where('status', 'unpaid')
             ->get()
             ->groupBy('student_id');
 
         $unpaidStudents = [];
         $totalUnpaidAmount = 0;
+        
+        $lastMonth = $month - 1;
+        $lastMonthYear = $year;
+        if ($lastMonth == 0) {
+            $lastMonth = 12;
+            $lastMonthYear = $year - 1;
+        }
 
         foreach ($attendanceCounts as $sId => $sessions) {
             if ($sessions > 0) {
@@ -85,6 +92,17 @@ class DashboardController extends Controller
                 if ($s) {
                     $unpaidInvoices = $allUnpaidInvoices->get($s->id, collect());
                     $previousDebt = $unpaidInvoices->sum('final_amount') + ($s->debt ?? 0);
+                    
+                    $lastMonthDebt = 0;
+                    $yearlyDebt = $s->debt ?? 0;
+
+                    foreach ($unpaidInvoices as $inv) {
+                        if ($inv->billing_month == $lastMonth && $inv->billing_year == $lastMonthYear) {
+                            $lastMonthDebt += $inv->final_amount;
+                        } else {
+                            $yearlyDebt += $inv->final_amount;
+                        }
+                    }
 
                     $expectedFee = $sessions * ($s->price_per_session ?? 130000);
                     $totalAmount = $expectedFee + $previousDebt;
@@ -102,6 +120,8 @@ class DashboardController extends Controller
                         'total_sessions' => $sessions,
                         'expected_fee'   => $expectedFee,
                         'previous_debt'  => $previousDebt,
+                        'last_month_debt'=> $lastMonthDebt,
+                        'yearly_debt'    => $yearlyDebt,
                         'total_amount'   => $totalAmount,
                     ];
                 }

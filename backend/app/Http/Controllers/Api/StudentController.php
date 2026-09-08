@@ -118,7 +118,7 @@ class StudentController extends Controller
                 ->get()
                 ->keyBy('student_id');
 
-            $allUnpaidInvoices = Invoice::select('student_id', 'final_amount')
+            $allUnpaidInvoices = Invoice::select('student_id', 'final_amount', 'billing_month', 'billing_year')
                 ->whereIn('student_id', $studentIds)
                 ->where('status', 'unpaid')
                 ->get()
@@ -138,6 +138,15 @@ class StudentController extends Controller
 
             $filteredStudents = [];
 
+            $currentMonth = (int)$request->query('month', now()->month);
+            $currentYear = (int)$request->query('year', now()->year);
+            $lastMonth = $currentMonth - 1;
+            $lastMonthYear = $currentYear;
+            if ($lastMonth == 0) {
+                $lastMonth = 12;
+                $lastMonthYear = $currentYear - 1;
+            }
+
             foreach ($students as $s) {
                 $cycleAttendances = $allCycleAttendances->get($s->id, collect());
 
@@ -150,7 +159,21 @@ class StudentController extends Controller
 
                 $unpaidInvoices = $allUnpaidInvoices->get($s->id, collect());
                 $previousDebt = $unpaidInvoices->sum('final_amount') + ($s->debt ?? 0);
+                
+                $lastMonthDebt = 0;
+                $yearlyDebt = $s->debt ?? 0;
+                
+                foreach ($unpaidInvoices as $inv) {
+                    if ($inv->billing_month == $lastMonth && $inv->billing_year == $lastMonthYear) {
+                        $lastMonthDebt += $inv->final_amount;
+                    } else {
+                        $yearlyDebt += $inv->final_amount;
+                    }
+                }
+                
                 $s->previous_debt = $previousDebt;
+                $s->last_month_debt = $lastMonthDebt;
+                $s->yearly_debt = $yearlyDebt;
                 $s->final_amount = $s->total_tuition_in_cycle + $previousDebt;
 
                 $yearAttendances = $allYearAttendances->get($s->id, collect());

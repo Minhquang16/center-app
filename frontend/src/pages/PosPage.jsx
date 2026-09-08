@@ -374,12 +374,15 @@ export default function PosPage() {
                           </p>
                           
                           {tuitionSummary.has_debt && (
-                            <div className="mt-2 bg-red-100 p-2 rounded-lg border border-red-200">
-                              <div className="flex items-center space-x-1.5 mb-1 font-bold text-red-700">
+                            <div className="mt-2 bg-red-50 p-2.5 rounded-lg border border-red-200">
+                              <div className="flex items-center space-x-1.5 mb-1.5 font-bold text-red-700">
                                 <AlertTriangle className="w-4 h-4" />
-                                <span>⚠️ Học sinh đang nợ học phí kỳ trước. Đã cộng dồn vào tổng tiền kỳ này.</span>
+                                <span>⚠️ Học sinh đang có khoản nợ cũ. Đã cộng dồn vào tổng thanh toán.</span>
                               </div>
-                              <p className="text-[11px] text-red-600 pl-5">Nợ cũ cần thu: <b>{Number(tuitionSummary.previous_debt).toLocaleString('vi-VN')} đ</b></p>
+                              <div className="pl-5 space-y-0.5 mt-1 text-[11px] text-red-600">
+                                <p>Nợ tháng trước: <b>{Number(tuitionSummary.last_month_debt || 0).toLocaleString('vi-VN')} đ</b></p>
+                                <p>Nợ đọng (năm): <b>{Number(tuitionSummary.yearly_debt || 0).toLocaleString('vi-VN')} đ</b></p>
+                              </div>
                             </div>
                           )}
                           
