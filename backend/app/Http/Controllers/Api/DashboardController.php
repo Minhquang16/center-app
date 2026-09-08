@@ -71,6 +71,11 @@ class DashboardController extends Controller
             ->pluck('count', 'student_id')
             ->toArray();
 
+        $allUnpaidInvoices = Invoice::select('student_id', 'final_amount')
+            ->where('status', 'unpaid')
+            ->get()
+            ->groupBy('student_id');
+
         $unpaidStudents = [];
         $totalUnpaidAmount = 0;
 
@@ -78,8 +83,13 @@ class DashboardController extends Controller
             if ($sessions > 0) {
                 $s = $activeStudents->get($sId);
                 if ($s) {
+                    $unpaidInvoices = $allUnpaidInvoices->get($s->id, collect());
+                    $previousDebt = $unpaidInvoices->sum('final_amount') + ($s->debt ?? 0);
+
                     $expectedFee = $sessions * ($s->price_per_session ?? 130000);
-                    $totalUnpaidAmount += $expectedFee;
+                    $totalAmount = $expectedFee + $previousDebt;
+
+                    $totalUnpaidAmount += $expectedFee; // Hoặc có thể cộng cả nợ cũ nếu muốn tổng nợ chính xác hơn, giữ nguyên để không đổi logic cũ
 
                     $unpaidStudents[] = [
                         'id'             => $s->id,
@@ -91,6 +101,8 @@ class DashboardController extends Controller
                         'parent_phone'   => $s->parent_phone,
                         'total_sessions' => $sessions,
                         'expected_fee'   => $expectedFee,
+                        'previous_debt'  => $previousDebt,
+                        'total_amount'   => $totalAmount,
                     ];
                 }
             }

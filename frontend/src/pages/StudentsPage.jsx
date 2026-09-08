@@ -105,11 +105,15 @@ export default function StudentsPage() {
       return allShifts;
     }
 
-    // find class matching grade and class_type
     const selectedClass = classesList.find(c => {
-      const isHighSchool = ['10', '11', '12'].includes(String(c.grade));
-      const type = isHighSchool ? '' : c.class_code.replace(`${c.grade}-`, '');
-      return String(c.grade) === String(selectedGrade) && type === selectedClassType;
+      let type = '';
+      if (c.class_code) {
+        const parts = c.class_code.split('-');
+        if (parts.length >= 2) {
+          type = parts.slice(1).join('-');
+        }
+      }
+      return String(c.grade) === String(selectedGrade) && type === (selectedClassType || '');
     });
 
     if (!selectedClass || !selectedClass.schedules || selectedClass.schedules.length === 0) return [];
@@ -1048,8 +1052,13 @@ td { border: 1px solid #cbd5e1; padding: 6px 10px; font-size: 10pt; }
                   const shifts = s.today_shifts || {};
 
                   const studentClassInfo = classesList.find(c => {
-                    const isHighSchool = ['10', '11', '12'].includes(String(c.grade));
-                    const type = isHighSchool ? '' : c.class_code.replace(`${c.grade}-`, '');
+                    let type = '';
+                    if (c.class_code) {
+                      const parts = c.class_code.split('-');
+                      if (parts.length >= 2) {
+                        type = parts.slice(1).join('-');
+                      }
+                    }
                     return String(c.grade) === String(s.grade) && type === (s.class_type || '');
                   });
                   const studentHasShiftToday = studentClassInfo?.schedules?.some(sch => Number(sch.dayOfWeek) === targetDayOfWeek) || false;
@@ -1199,8 +1208,13 @@ td { border: 1px solid #cbd5e1; padding: 6px 10px; font-size: 10pt; }
                 const shifts = s.today_shifts || {};
 
                 const studentClassInfo = classesList.find(c => {
-                  const isHighSchool = ['10', '11', '12'].includes(String(c.grade));
-                  const type = isHighSchool ? '' : c.class_code.replace(`${c.grade}-`, '');
+                  let type = '';
+                  if (c.class_code) {
+                    const parts = c.class_code.split('-');
+                    if (parts.length >= 2) {
+                      type = parts.slice(1).join('-');
+                    }
+                  }
                   return String(c.grade) === String(s.grade) && type === (s.class_type || '');
                 });
                 const studentHasShiftToday = studentClassInfo?.schedules?.some(sch => Number(sch.dayOfWeek) === targetDayOfWeek) || false;

@@ -57,7 +57,8 @@ class ClassController extends Controller
         $students = \App\Models\Student::where('status', '!=', 'dropped')
             ->withCount(['attendances as attended_this_month' => function ($query) {
                 $query->whereMonth('checked_at', now()->month)
-                      ->whereYear('checked_at', now()->year);
+                      ->whereYear('checked_at', now()->year)
+                      ->whereIn('status', ['present', 'makeup']);
             }])
             ->get(['id', 'full_name', 'student_code', 'grade', 'class_type', 'parent_name', 'parent_phone']);
 
