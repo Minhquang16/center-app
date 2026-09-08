@@ -230,7 +230,7 @@ export default function DashboardPage() {
           "Tiền tháng này (VNĐ)": s.expected_fee,
           "Nợ tháng trước (VNĐ)": s.last_month_debt || 0,
           "Nợ đọng năm (VNĐ)": s.yearly_debt || 0,
-          "Tổng tiền (VNĐ)": s.total_amount || s.expected_fee
+          "Tổng tiền (VNĐ)": (s.expected_fee || 0) + (s.last_month_debt || 0) + (s.yearly_debt || 0)
         }));
         const wsUnpaid = XLSX.utils.json_to_sheet(classData);
         wsUnpaid['!cols'] = [{ wch: 5 }, { wch: 15 }, { wch: 25 }, { wch: 10 }, { wch: 10 }, { wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 20 }];
