@@ -18,8 +18,8 @@ class InvoiceController extends Controller
         $settingsFile = 'settings.json';
         if (!Storage::exists($settingsFile)) {
             return [
-                'bank_id' => 'MB',
-                'account_no' => '0987654321',
+                'bank_id' => 'TCB',
+                'account_no' => '6616102005',
                 'account_name' => 'SUNNY EDUCATION'
             ];
         }

@@ -15,8 +15,8 @@ class SettingController extends Controller
         if (!Storage::exists($this->settingsFile)) {
             // Default settings
             $defaultSettings = [
-                'bank_id' => 'MB',
-                'account_no' => '0987654321',
+                'bank_id' => 'TCB',
+                'account_no' => '6616102005',
                 'account_name' => 'SUNNY EDUCATION'
             ];
             Storage::put($this->settingsFile, json_encode($defaultSettings));
