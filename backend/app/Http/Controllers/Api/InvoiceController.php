@@ -8,10 +8,23 @@ use App\Models\Invoice;
 use App\Models\Student;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use App\Models\AuditLog;
 
 class InvoiceController extends Controller
 {
+    private function getSettings()
+    {
+        $settingsFile = 'settings.json';
+        if (!Storage::exists($settingsFile)) {
+            return [
+                'bank_id' => 'MB',
+                'account_no' => '0987654321',
+                'account_name' => 'SUNNY EDUCATION'
+            ];
+        }
+        return json_decode(Storage::get($settingsFile), true);
+    }
     public function index()
     {
         $invoices = Invoice::with('student')
@@ -59,9 +72,10 @@ class InvoiceController extends Controller
         // Tạo đường dẫn VietQR động nếu chọn hình thức chuyển khoản
         $qrUrl = '';
         if ($request->payment_method === 'transfer') {
-            $bankId  = 'MB'; // Mã ngân hàng (MBBank, VCB, ICB, VPB...)
-            $account = '0987654321'; // Số tài khoản trung tâm
-            $name    = urlencode('SUNNY EDUCATION');
+            $settings = $this->getSettings();
+            $bankId  = $settings['bank_id'];
+            $account = $settings['account_no'];
+            $name    = urlencode($settings['account_name']);
             $addInfo = urlencode("HP " . $student->student_code);
             $qrUrl   = "https://img.vietqr.io/image/{$bankId}-{$account}-compact2.png?amount={$request->amount}&addInfo={$addInfo}&accountName={$name}";
         }
@@ -72,6 +86,81 @@ class InvoiceController extends Controller
             'message' => 'Tạo hóa đơn thành công!',
             'invoice' => $invoice,
             'qr_url'  => $qrUrl,
+        ]);
+    }
+
+    public function bulkStore(Request $request)
+    {
+        $request->validate([
+            'invoices' => 'required|array|min:1',
+            'invoices.*.student_id' => 'required|exists:students,id',
+            'invoices.*.title' => 'required|string',
+            'invoices.*.amount' => 'required|numeric|min:1000',
+            'payment_method' => 'required|string',
+        ]);
+
+        $createdInvoices = [];
+        $totalAmount = 0;
+        $studentCodes = [];
+
+        DB::beginTransaction();
+        try {
+            $approvalStatus = $request->payment_method === 'transfer' ? 'pending' : 'approved';
+
+            foreach ($request->invoices as $invData) {
+                $student = Student::findOrFail($invData['student_id']);
+                $invoiceCode = 'HD' . date('YmdHis') . rand(10, 99) . $student->id;
+
+                $invoice = Invoice::create([
+                    'invoice_code'   => $invoiceCode,
+                    'student_id'     => $student->id,
+                    'title'          => $invData['title'],
+                    'amount'         => $invData['amount'],
+                    'payment_method' => $request->payment_method,
+                    'status'         => 'paid',
+                    'approval_status'=> $approvalStatus,
+                    'paid_at'        => Carbon::now(),
+                ]);
+
+                AuditLog::create([
+                    'user_id' => $request->user()->id,
+                    'student_id' => $student->id,
+                    'action' => 'INVOICE_CREATE',
+                    'new_data' => json_encode(['amount' => $invoice->amount, 'method' => $invoice->payment_method]),
+                    'reason' => 'Tạo hóa đơn thu tiền gộp',
+                ]);
+
+                $invoice->load('student');
+                $createdInvoices[] = $invoice;
+                $totalAmount += $invData['amount'];
+                $studentCodes[] = $student->student_code;
+            }
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['message' => 'Lỗi tạo hóa đơn gộp: ' . $e->getMessage()], 500);
+        }
+
+        $qrUrl = '';
+        if ($request->payment_method === 'transfer') {
+            $settings = $this->getSettings();
+            $bankId  = $settings['bank_id'];
+            $account = $settings['account_no'];
+            $name    = urlencode($settings['account_name']);
+            // Limit addInfo length if too many students
+            $addInfoStr = "HP " . implode(" ", $studentCodes);
+            if (strlen($addInfoStr) > 50) {
+                $addInfoStr = substr($addInfoStr, 0, 47) . "...";
+            }
+            $addInfo = urlencode($addInfoStr);
+            $qrUrl   = "https://img.vietqr.io/image/{$bankId}-{$account}-compact2.png?amount={$totalAmount}&addInfo={$addInfo}&accountName={$name}";
+        }
+
+        return response()->json([
+            'message' => 'Tạo hóa đơn gộp thành công!',
+            'invoices' => $createdInvoices,
+            'qr_url'  => $qrUrl,
+            'total_amount' => $totalAmount
         ]);
     }
 

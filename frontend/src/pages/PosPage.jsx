@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
 import api from "../api/axios";
 import { toast } from "sonner";
 import {
@@ -16,11 +15,17 @@ import {
   Users,
   AlertTriangle,
   ShieldCheck,
+  Settings,
+  Save,
+  Trash2
 } from "lucide-react";
 
 export default function PosPage() {
   const [students, setStudents] = useState([]);
-  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [cart, setCart] = useState([]);
+  const [showSettings, setShowSettings] = useState(false);
+  const [settings, setSettings] = useState({ bank_id: 'MB', account_no: '', account_name: '' });
+  const [recentInvoices, setRecentInvoices] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
@@ -34,22 +39,14 @@ export default function PosPage() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-  const [searchParams] = useSearchParams();
-  const preselectedStudentId = searchParams.get("studentId");
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
   const currentMonth = new Date().getMonth() + 1;
   const currentYear = new Date().getFullYear();
 
-  const [tuitionSummary, setTuitionSummary] = useState(null);
-  const [title, setTitle] = useState(
-    `Học phí Tháng ${currentMonth}/${currentYear}`,
-  );
-  const [amount, setAmount] = useState("0");
   const [paymentMethod, setPaymentMethod] = useState("transfer");
 
-  const [recentInvoice, setRecentInvoice] = useState(null);
   const [qrUrl, setQrUrl] = useState("");
   const [invoicesHistory, setInvoicesHistory] = useState([]);
   const [loadingSummary, setLoadingSummary] = useState(false);
@@ -66,6 +63,8 @@ export default function PosPage() {
     try {
       const resInvoices = await api.get("/invoices");
       setInvoicesHistory(resInvoices.data || []);
+      const resSettings = await api.get("/settings");
+      setSettings(resSettings.data || { bank_id: 'MB', account_no: '', account_name: '' });
     } catch (err) {}
   };
 
@@ -73,48 +72,8 @@ export default function PosPage() {
     fetchData();
   }, []);
 
-  useEffect(() => {
-    if (students.length > 0 && preselectedStudentId && !selectedStudent) {
-      const s = students.find((x) => String(x.id) === preselectedStudentId);
-      if (s) {
-        setSelectedStudent(s);
-      }
-    }
-  }, [students, preselectedStudentId, selectedStudent]);
+  // Removed selectedStudent useEffects, handled in handleSelectStudent
 
-  useEffect(() => {
-    if (selectedStudent) {
-      setLoadingSummary(true);
-      api
-        .get(`/students/${selectedStudent.id}/billing-info`, {
-          params: { month: currentMonth, year: currentYear },
-        })
-        .then((res) => {
-          setTuitionSummary(res.data);
-          setAmount(String(res.data.final_amount || 0));
-        })
-        .catch((err) => console.error("Lỗi tính học phí:", err))
-        .finally(() => setLoadingSummary(false));
-    } else {
-      setTuitionSummary(null);
-      setAmount("0");
-    }
-  }, [selectedStudent]);
-
-  // KIỂM TRA HỌC SINH ĐÃ NỘP HỌC PHÍ THÁNG NÀY CHƯA (MỖI HỌC SINH CHỈ THU 1 LẦN)
-  const existingInvoice = selectedStudent
-    ? invoicesHistory.find((inv) => {
-        if (inv.student_id !== selectedStudent.id) return false;
-        if (inv.approval_status === "rejected") return false; // Không tính hóa đơn đã bị từ chối
-        const invDate = new Date(inv.paid_at || inv.created_at);
-        return (
-          invDate.getMonth() + 1 === currentMonth &&
-          invDate.getFullYear() === currentYear
-        );
-      })
-    : null;
-
-  const isAlreadyPaid = Boolean(existingInvoice);
 
   // TÍNH TOÁN THỐNG KÊ DOANH THU THEO NGÀY TRONG THÁNG
   const monthlySummary = { cash: 0, transfer: 0, total: 0 };
@@ -162,28 +121,81 @@ export default function PosPage() {
     return name.includes(cleanQuery) || code.includes(cleanQuery);
   });
 
+  const handleSelectStudent = async (student) => {
+    // Check if in cart
+    if (cart.find(c => c.student.id === student.id)) {
+      toast.warning("Học sinh này đã có trong giỏ hàng!");
+      setSearchQuery("");
+      setShowDropdown(false);
+      return;
+    }
+    // Check if paid
+    const existingInvoice = invoicesHistory.find(inv => {
+      if (inv.student_id !== student.id) return false;
+      if (inv.approval_status === "rejected") return false;
+      const invDate = new Date(inv.paid_at || inv.created_at);
+      return (invDate.getMonth() + 1 === currentMonth && invDate.getFullYear() === currentYear);
+    });
+    if (existingInvoice) {
+      toast.warning(`Học sinh ${student.full_name} đã có hóa đơn tháng này!`);
+      setSearchQuery("");
+      setShowDropdown(false);
+      return;
+    }
+
+    setLoadingSummary(true);
+    try {
+      const res = await api.get(`/students/${student.id}/billing-info`, {
+        params: { month: currentMonth, year: currentYear },
+      });
+      setCart(prev => [...prev, {
+        student,
+        summary: res.data,
+        amount: res.data.final_amount || 0,
+        title: `Học phí Tháng ${currentMonth}/${currentYear}`
+      }]);
+    } catch(err) {
+      toast.error("Lỗi tính học phí: " + err.message);
+    } finally {
+      setLoadingSummary(false);
+      setSearchQuery("");
+      setShowDropdown(false);
+    }
+  };
+
+  const handleRemoveFromCart = (studentId) => {
+    setCart(prev => prev.filter(c => c.student.id !== studentId));
+  };
+
+  const handleUpdateCartItem = (studentId, field, value) => {
+    setCart(prev => prev.map(c => c.student.id === studentId ? { ...c, [field]: value } : c));
+  };
+
   const handleCreateInvoice = async (e) => {
     e.preventDefault();
-    if (!selectedStudent)
+    if (cart.length === 0)
       return toast.warning("Vui lòng chọn học sinh cần thu tiền!");
-    if (isAlreadyPaid)
-      return toast.warning(
-        `Học sinh ${selectedStudent.full_name} đã nộp học phí tháng này rồi!`,
-      );
-    if (!amount || Number(amount) <= 0)
+    
+    // Validate amounts
+    if (cart.some(c => Number(c.amount) <= 0))
       return toast.warning("Số tiền thu phải lớn hơn 0 đ!");
 
+    const invoicesData = cart.map(c => ({
+      student_id: c.student.id,
+      title: c.title,
+      amount: Number(c.amount)
+    }));
+
     try {
-      const res = await api.post("/invoices", {
-        student_id: selectedStudent.id,
-        title,
-        amount: Number(amount),
+      const res = await api.post("/invoices/bulk", {
+        invoices: invoicesData,
         payment_method: paymentMethod,
       });
 
-      setRecentInvoice(res.data.invoice);
+      setRecentInvoices(res.data.invoices || []);
       setQrUrl(res.data.qr_url || "");
       toast.success("Đã tạo hóa đơn thành công!");
+      setCart([]); // Clear cart
       fetchData();
     } catch (err) {
       toast.error(
@@ -191,6 +203,7 @@ export default function PosPage() {
       );
     }
   };
+
 
   const handleUndoInvoice = async (id) => {
     if (
@@ -280,6 +293,13 @@ export default function PosPage() {
             <span>Tổng: {students.length} học sinh</span>
           </span>
           <button
+            onClick={() => setShowSettings(true)}
+            className="p-2 rounded-lg bg-slate-100 dark:bg-slate-700/50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400 dark:text-slate-400 hover:bg-slate-200 border border-slate-200 dark:border-slate-700 dark:border-slate-700 transition-colors"
+            title="Cài đặt ngân hàng"
+          >
+            <Settings className="w-4 h-4" />
+          </button>
+          <button
             onClick={fetchData}
             className="p-2 rounded-lg bg-slate-100 dark:bg-slate-700/50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400 dark:text-slate-400 hover:bg-slate-200 border border-slate-200 dark:border-slate-700 dark:border-slate-700 transition-colors"
             title="Tải lại dữ liệu"
@@ -288,6 +308,70 @@ export default function PosPage() {
           </button>
         </div>
       </div>
+
+      {/* MODAL CÀI ĐẶT NGÂN HÀNG */}
+      {showSettings && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-xl p-6 w-full max-w-md shadow-2xl">
+            <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+              <Settings className="w-5 h-5" />
+              Cấu hình Ngân hàng (VietQR)
+            </h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold mb-1">Mã Ngân hàng (VD: MB, VCB)</label>
+                <input 
+                  type="text" 
+                  className="w-full border rounded p-2 text-sm" 
+                  value={settings.bank_id}
+                  onChange={e => setSettings({...settings, bank_id: e.target.value})}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold mb-1">Số Tài Khoản</label>
+                <input 
+                  type="text" 
+                  className="w-full border rounded p-2 text-sm" 
+                  value={settings.account_no}
+                  onChange={e => setSettings({...settings, account_no: e.target.value})}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold mb-1">Tên Chủ Tài Khoản</label>
+                <input 
+                  type="text" 
+                  className="w-full border rounded p-2 text-sm" 
+                  value={settings.account_name}
+                  onChange={e => setSettings({...settings, account_name: e.target.value})}
+                />
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <button 
+                onClick={() => setShowSettings(false)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-sm font-semibold text-slate-700"
+              >
+                Hủy
+              </button>
+              <button 
+                onClick={async () => {
+                  try {
+                    await api.put('/settings', settings);
+                    toast.success("Đã lưu cấu hình ngân hàng");
+                    setShowSettings(false);
+                  } catch (e) {
+                    toast.error("Lỗi lưu cấu hình");
+                  }
+                }}
+                className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg text-sm font-bold flex items-center gap-2"
+              >
+                <Save className="w-4 h-4" />
+                Lưu lại
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* CỘT TRÁI: FORM THU TIỀN */}
@@ -364,251 +448,92 @@ export default function PosPage() {
               )}
             </div>
 
-            {/* THÔNG TIN HỌC SINH ĐƯỢC CHỌN & TRẠNG THÁI XÁC NHẬN ĐÃ NỘP / CHƯA NỘP */}
-            {selectedStudent && (
-              <div className="p-4 bg-slate-50 dark:bg-slate-900/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 dark:border-slate-700 rounded-xl space-y-3">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                      HỌC SINH ĐƯỢC CHỌN
-                    </span>
-                    <p className="font-extrabold text-lg text-slate-900 dark:text-white">
-                      {selectedStudent.full_name}
-                    </p>
-                    <p className="text-xs text-slate-600 dark:text-slate-400 dark:text-slate-400 mt-0.5">
-                      Mã:{" "}
-                      <b className="font-mono text-slate-800 dark:text-slate-200 dark:text-slate-200">
-                        {selectedStudent.student_code}
-                      </b>{" "}
-                      | Khối <b>{selectedStudent.grade}</b>{" "}
-                      {selectedStudent.class_type &&
-                        `(${selectedStudent.class_type})`}{" "}
-                      | PH: <b>{selectedStudent.parent_name}</b> (
-                      {selectedStudent.parent_phone})
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setSelectedStudent(null);
-                      setShowDropdown(true);
-                    }}
-                    className="text-xs text-rose-600 font-bold hover:underline bg-rose-50 dark:bg-rose-900/30 dark:bg-rose-900/30 border border-rose-200 px-2.5 py-1 rounded-lg"
-                  >
-                    Đổi HS khác
+            {/* CART: HỌC SINH ĐÃ CHỌN */}
+            {cart.length > 0 && (
+              <div className="p-4 bg-slate-50 dark:bg-slate-900/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 dark:border-slate-700 rounded-xl space-y-4">
+                <div className="flex justify-between items-center border-b pb-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                    Danh Sách Thu ({cart.length} học sinh)
+                  </span>
+                  <button onClick={() => setCart([])} className="text-[10px] text-rose-500 font-bold hover:underline">
+                    Xóa tất cả
                   </button>
                 </div>
-
-                {/* XÁC NHẬN NẾU HỌC SINH ĐÃ NỘP HỌC PHÍ THÁNG NÀY */}
-                {isAlreadyPaid ? (
-                  <div className="p-3 bg-emerald-50 dark:bg-emerald-900/30 dark:bg-emerald-900/30 border border-emerald-300 rounded-xl flex items-center justify-between text-xs">
-                    <div className="flex items-center space-x-2 text-emerald-900">
-                      <ShieldCheck className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-                      <div>
-                        <p className="font-bold text-emerald-800 dark:text-emerald-300 dark:text-emerald-300">
-                          XÁC NHẬN: ĐÃ NỘP HỌC PHÍ THÁNG {currentMonth}/
-                          {currentYear}
-                        </p>
-                        <p className="text-[11px] text-emerald-700 dark:text-emerald-400 dark:text-emerald-400 mt-0.5">
-                          Mã HĐ:{" "}
-                          <b className="font-mono">
-                            {existingInvoice.invoice_code}
-                          </b>{" "}
-                          | Đã thu:{" "}
-                          <b className="text-emerald-900">
-                            {Number(existingInvoice.amount).toLocaleString(
-                              "vi-VN",
-                            )}{" "}
-                            đ
-                          </b>{" "}
-                          lúc{" "}
-                          {new Date(
-                            existingInvoice.paid_at ||
-                              existingInvoice.created_at,
-                          ).toLocaleDateString("vi-VN")}
-                        </p>
-                      </div>
-                    </div>
-                    <span className="bg-emerald-600 text-white font-bold text-[10px] px-2.5 py-1 rounded-md uppercase whitespace-nowrap">
-                      Đã khóa thu
-                    </span>
-                  </div>
-                ) : loadingSummary ? (
-                  <div className="text-xs text-slate-400 italic p-2">
-                    Đang tính số buổi học và công nợ...
-                  </div>
-                ) : (
-                  tuitionSummary && (
-                    <div
-                      className={`p-4 rounded-xl border flex flex-col space-y-3 text-xs shadow-sm dark:shadow-none dark:shadow-none ${
-                        tuitionSummary.has_debt
-                          ? "bg-red-50 border-red-500 text-red-900"
-                          : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 dark:border-slate-700 text-slate-700 dark:text-slate-300 dark:text-slate-300"
-                      }`}
-                    >
-                      <div className="flex items-start space-x-3">
-                        <CalendarCheck
-                          className={`w-5 h-5 flex-shrink-0 ${tuitionSummary.has_debt ? "text-red-600" : "text-cyan-600"}`}
-                        />
-                        <div className="flex-1 space-y-1">
-                          <p
-                            className={`font-semibold ${tuitionSummary.has_debt ? "text-red-800" : "text-slate-800 dark:text-slate-200 dark:text-slate-200"}`}
-                          >
-                            Tháng {tuitionSummary.current_month}/
-                            {tuitionSummary.current_year}: Tham gia{" "}
-                            <b className="text-lg">
-                              {tuitionSummary.attended_sessions}
-                            </b>{" "}
-                            buổi học
+                
+                <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+                  {cart.map((item) => (
+                    <div key={item.student.id} className="p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 shadow-sm relative">
+                      <button 
+                        onClick={() => handleRemoveFromCart(item.student.id)}
+                        className="absolute -top-2 -right-2 bg-rose-100 text-rose-600 p-1.5 rounded-full hover:bg-rose-200"
+                        title="Xóa khỏi danh sách"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                      
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <p className="font-bold text-sm text-slate-900 dark:text-white">
+                            {item.student.full_name}
                           </p>
-                          <p
-                            className={`text-[11px] ${tuitionSummary.has_debt ? "text-red-700" : "text-slate-500 dark:text-slate-400 dark:text-slate-400"}`}
-                          >
-                            Đơn giá:{" "}
-                            <b>
-                              {Number(
-                                tuitionSummary.price_per_session || 130000,
-                              ).toLocaleString("vi-VN")}{" "}
-                              đ/buổi
-                            </b>
-                            <span className="mx-2">→</span>
-                            Tiền tháng này:{" "}
-                            <b>
-                              {Number(
-                                tuitionSummary.current_fee || 0,
-                              ).toLocaleString("vi-VN")}{" "}
-                              đ
-                            </b>
-                          </p>
-
-                          {tuitionSummary.has_debt && (
-                            <div className="mt-2 bg-red-50 p-2.5 rounded-lg border border-red-200">
-                              <div className="flex items-center space-x-1.5 mb-1.5 font-bold text-red-700">
-                                <AlertTriangle className="w-4 h-4" />
-                                <span>
-                                  ⚠️ Học sinh đang có khoản nợ cũ. Đã cộng dồn
-                                  vào tổng thanh toán.
-                                </span>
-                              </div>
-                              <div className="pl-5 space-y-0.5 mt-1 text-[11px] text-red-600">
-                                <p>
-                                  Nợ tháng trước:{" "}
-                                  <b>
-                                    {Number(
-                                      tuitionSummary.last_month_debt || 0,
-                                    ).toLocaleString("vi-VN")}{" "}
-                                    đ
-                                  </b>
-                                </p>
-                                <p>
-                                  Nợ đọng (năm):{" "}
-                                  <b>
-                                    {Number(
-                                      tuitionSummary.yearly_debt || 0,
-                                    ).toLocaleString("vi-VN")}{" "}
-                                    đ
-                                  </b>
-                                </p>
-                              </div>
-                            </div>
-                          )}
-
-                          <p className="text-sm pt-2 border-t border-dashed border-slate-300 dark:border-slate-600 dark:border-slate-600 mt-2">
-                            Tổng thanh toán:{" "}
-                            <b className="text-lg text-emerald-700 dark:text-emerald-400 dark:text-emerald-400">
-                              {Number(
-                                tuitionSummary.final_amount || 0,
-                              ).toLocaleString("vi-VN")}{" "}
-                              đ
-                            </b>
+                          <p className="text-[11px] text-slate-500">
+                            Mã: <b className="font-mono">{item.student.student_code}</b> | {item.student.parent_name}
                           </p>
                         </div>
                       </div>
-                      <div className="flex justify-end">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setAmount(String(tuitionSummary.final_amount))
-                          }
-                          className={`text-[11px] font-bold px-3 py-1.5 rounded-lg transition-colors ${
-                            tuitionSummary.has_debt
-                              ? "bg-red-600 text-white hover:bg-red-700 shadow-sm dark:shadow-none dark:shadow-none"
-                              : "bg-cyan-50 dark:bg-cyan-900/30 dark:bg-cyan-900/30 text-cyan-800 dark:text-cyan-300 dark:text-cyan-300 border border-cyan-200 hover:bg-cyan-100"
-                          }`}
-                        >
-                          Dùng số tiền này
-                        </button>
+                      
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-2">
+                           <div>
+                            <label className="text-[10px] font-bold text-slate-500">Nội dung thu *</label>
+                            <input
+                              type="text"
+                              required
+                              className="w-full border border-slate-300 dark:border-slate-600 rounded p-1.5 text-xs outline-none focus:border-cyan-500 bg-white dark:bg-slate-900"
+                              value={item.title}
+                              onChange={(e) => handleUpdateCartItem(item.student.id, 'title', e.target.value)}
+                            />
+                           </div>
+                           <div>
+                            <label className="text-[10px] font-bold text-slate-500">Số tiền (VNĐ) *</label>
+                            <input
+                              type="number"
+                              required
+                              step="1000"
+                              className="w-full border border-slate-300 dark:border-slate-600 rounded p-1.5 text-xs font-bold outline-none focus:border-cyan-500 bg-white dark:bg-slate-900"
+                              value={item.amount}
+                              onChange={(e) => handleUpdateCartItem(item.student.id, 'amount', e.target.value)}
+                            />
+                           </div>
+                        </div>
+                        
+                        {item.summary && (
+                          <div className="text-[10px] text-slate-500 bg-slate-50 dark:bg-slate-900 p-2 rounded">
+                            Tham gia: <b>{item.summary.attended_sessions}</b> buổi x {Number(item.summary.price_per_session).toLocaleString("vi-VN")} đ.
+                            {item.summary.has_debt && (
+                              <span className="text-red-500 ml-1"> + Nợ cũ: {Number(item.summary.previous_debt).toLocaleString("vi-VN")} đ</span>
+                            )}
+                            <div className="mt-1 flex gap-2">
+                              <button type="button" onClick={() => handleUpdateCartItem(item.student.id, 'amount', String((Number(item.amount)||0) + 100000))} className="bg-slate-200 px-1.5 py-0.5 rounded">+100k</button>
+                              <button type="button" onClick={() => handleUpdateCartItem(item.student.id, 'amount', String(item.summary.final_amount))} className="bg-cyan-100 text-cyan-700 px-1.5 py-0.5 rounded font-bold">Chuẩn HP</button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
-                  )
-                )}
+                  ))}
+                </div>
+                
+                <div className="pt-3 border-t border-slate-200 flex justify-between items-center">
+                  <span className="text-sm font-bold text-slate-700">TỔNG CỘNG:</span>
+                  <span className="text-xl font-black text-cyan-700">
+                    {cart.reduce((sum, item) => sum + (Number(item.amount) || 0), 0).toLocaleString("vi-VN")} đ
+                  </span>
+                </div>
               </div>
             )}
 
             <form onSubmit={handleCreateInvoice} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 dark:text-slate-300 mb-1">
-                    Nội dung thu *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    disabled={isAlreadyPaid}
-                    className="w-full border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-xs font-semibold outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400 bg-white dark:bg-slate-800 text-slate-900 dark:text-white disabled:bg-slate-100 disabled:text-slate-500 dark:disabled:bg-slate-700/50 dark:disabled:text-slate-400"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 dark:text-slate-300 mb-1">
-                    Số tiền thu (VNĐ) *
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    disabled={isAlreadyPaid}
-                    step="1000"
-                    className="w-full border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-lg font-black bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400 outline-none disabled:bg-slate-100 disabled:text-slate-500 dark:disabled:bg-slate-700/50 dark:disabled:text-slate-400"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                  />
-
-                  {!isAlreadyPaid && (
-                    <div className="flex gap-1.5 mt-1.5 text-[11px]">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setAmount(String((Number(amount) || 0) + 100000))
-                        }
-                        className="bg-slate-100 dark:bg-slate-700/50 dark:bg-slate-700/50 hover:bg-slate-200 text-slate-700 dark:text-slate-300 dark:text-slate-300 px-2 py-0.5 rounded font-semibold border"
-                      >
-                        +100k
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setAmount(String((Number(amount) || 0) + 500000))
-                        }
-                        className="bg-slate-100 dark:bg-slate-700/50 dark:bg-slate-700/50 hover:bg-slate-200 text-slate-700 dark:text-slate-300 dark:text-slate-300 px-2 py-0.5 rounded font-semibold border"
-                      >
-                        +500k
-                      </button>
-                      {tuitionSummary && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setAmount(String(tuitionSummary.final_amount))
-                          }
-                          className="bg-cyan-50 dark:bg-cyan-900/30 dark:bg-cyan-900/30 hover:bg-cyan-100 text-cyan-800 dark:text-cyan-300 dark:text-cyan-300 px-2 py-0.5 rounded font-semibold border border-cyan-200"
-                        >
-                          Chuẩn HP
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 dark:text-slate-300 mb-1.5">
@@ -645,12 +570,10 @@ export default function PosPage() {
 
               <button
                 type="submit"
-                disabled={!selectedStudent || isAlreadyPaid}
+                disabled={cart.length === 0}
                 className="w-full bg-cyan-700 text-white py-3 rounded-xl hover:bg-cyan-800 font-bold text-sm disabled:bg-slate-200 disabled:text-slate-400 dark:disabled:bg-slate-800 dark:disabled:text-slate-500 transition-colors shadow-sm dark:shadow-none cursor-pointer"
               >
-                {isAlreadyPaid
-                  ? `Học Sinh Đã Nộp Học Phí Tháng ${currentMonth}`
-                  : "Tạo Hóa Đơn & Xuất Mã VietQR / Phiếu Thu"}
+                Tạo Hóa Đơn & Xuất Mã VietQR / Phiếu Thu
               </button>
             </form>
           </div>
@@ -931,17 +854,16 @@ export default function PosPage() {
 
         {/* CỘT PHẢI: PHIẾU THU K80 (SỬA LỖI ĐỔI HÌNH THỨC THANH TOÁN VẪN HIỂN THỊ CỐ ĐỊNH) */}
         <div className="lg:col-span-1">
-          {recentInvoice ? (
+          {recentInvoices.length > 0 ? (
             <div className="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm dark:shadow-none dark:shadow-none border border-slate-200 dark:border-slate-700 dark:border-slate-700 text-center space-y-4">
               <div className="flex justify-center items-center text-emerald-700 dark:text-emerald-400 dark:text-emerald-400 space-x-1.5 bg-emerald-50 dark:bg-emerald-900/30 dark:bg-emerald-900/30 py-2 rounded-lg border border-emerald-200 print:hidden">
                 <CheckCircle2 className="w-5 h-5" />
                 <span className="font-bold text-sm">
-                  XÁC NHẬN THU TIỀN THÀNH CÔNG
+                  ĐÃ TẠO {recentInvoices.length} PHIẾU THU THÀNH CÔNG
                 </span>
               </div>
 
-              {/* DÙNG recentInvoice.payment_method NÊN KHI ĐỔI PHƯƠNG THỨC Ở FORM KHÔNG BỊ MẤT GIAO DIỆN */}
-              {recentInvoice.payment_method === "transfer" && qrUrl && (
+              {recentInvoices[0].payment_method === "transfer" && qrUrl && (
                 <div className="bg-slate-50 dark:bg-slate-900/50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-200 dark:border-slate-700 dark:border-slate-700 inline-block shadow-inner print:hidden">
                   <img
                     src={qrUrl}
@@ -949,74 +871,80 @@ export default function PosPage() {
                     className="w-52 h-auto mx-auto rounded-lg border bg-white dark:bg-slate-800 p-1"
                   />
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 dark:text-slate-400 mt-2 font-medium">
-                    Quét mã bằng ứng dụng Ngân hàng
+                    Quét mã để thanh toán tổng cộng
                   </p>
                 </div>
               )}
 
-              {/* KHUNG PHIẾU THU K80 */}
-              <div
-                id="print-invoice"
-                className="border-2 border-dashed border-slate-300 dark:border-slate-600 dark:border-slate-600 p-4 rounded-xl text-left font-mono text-xs space-y-1.5 text-slate-800 dark:text-slate-200 dark:text-slate-200 bg-slate-50 dark:bg-slate-900/50 dark:bg-slate-900/50"
-              >
-                <p className="text-center font-black text-sm uppercase text-slate-900 dark:text-white">
-                  SUNNY EDUCATION POS
-                </p>
-                <p className="text-center text-[10px] text-slate-500 dark:text-slate-400 dark:text-slate-400 uppercase tracking-widest border-b pb-2">
-                  PHIẾU XÁC NHẬN THU HỌC PHÍ
-                </p>
+              {/* KHUNG PHIẾU THU K80 CHO TẤT CẢ HÓA ĐƠN */}
+              <div id="print-invoice" className="space-y-4">
+                {recentInvoices.map((inv, index) => (
+                  <div
+                    key={inv.id}
+                    className="border-2 border-dashed border-slate-300 dark:border-slate-600 dark:border-slate-600 p-4 rounded-xl text-left font-mono text-xs space-y-1.5 text-slate-800 dark:text-slate-200 dark:text-slate-200 bg-slate-50 dark:bg-slate-900/50 dark:bg-slate-900/50"
+                  >
+                    <p className="text-center font-black text-sm uppercase text-slate-900 dark:text-white">
+                      SUNNY EDUCATION POS
+                    </p>
+                    <p className="text-center text-[10px] text-slate-500 dark:text-slate-400 dark:text-slate-400 uppercase tracking-widest border-b pb-2">
+                      PHIẾU XÁC NHẬN THU HỌC PHÍ {recentInvoices.length > 1 ? `(${index + 1}/${recentInvoices.length})` : ''}
+                    </p>
 
-                <div className="pt-2 space-y-1">
-                  <p>
-                    Mã HD:{" "}
-                    <b className="font-mono text-slate-900 dark:text-white">
-                      {recentInvoice.invoice_code}
-                    </b>
-                  </p>
-                  <p>
-                    Ngày thu:{" "}
-                    <b>
-                      {new Date(
-                        recentInvoice.paid_at || Date.now(),
-                      ).toLocaleString("vi-VN")}
-                    </b>
-                  </p>
-                  <p>
-                    Học sinh:{" "}
-                    <b className="text-slate-900 dark:text-white">
-                      {recentInvoice.student?.full_name}
-                    </b>
-                  </p>
-                  <p>
-                    Mã HS: <b>{recentInvoice.student?.student_code}</b>
-                  </p>
-                  <p>Nội dung: {recentInvoice.title}</p>
-                </div>
+                    <div className="pt-2 space-y-1">
+                      <p>
+                        Mã HD:{" "}
+                        <b className="font-mono text-slate-900 dark:text-white">
+                          {inv.invoice_code}
+                        </b>
+                      </p>
+                      <p>
+                        Ngày thu:{" "}
+                        <b>
+                          {new Date(
+                            inv.paid_at || Date.now(),
+                          ).toLocaleString("vi-VN")}
+                        </b>
+                      </p>
+                      <p>
+                        Học sinh:{" "}
+                        <b className="text-slate-900 dark:text-white">
+                          {inv.student?.full_name}
+                        </b>
+                      </p>
+                      <p>
+                        Mã HS: <b>{inv.student?.student_code}</b>
+                      </p>
+                      <p>Nội dung: {inv.title}</p>
+                    </div>
 
-                <div className="border-t border-b border-slate-300 dark:border-slate-600 dark:border-slate-600 py-2 my-2 font-extrabold text-sm flex justify-between items-center text-slate-900 dark:text-white">
-                  <span>TỔNG TIỀN:</span>
-                  <span className="text-base text-emerald-700 dark:text-emerald-400 dark:text-emerald-400">
-                    {Number(recentInvoice.amount).toLocaleString("vi-VN")} đ
-                  </span>
-                </div>
+                    <div className="border-t border-b border-slate-300 dark:border-slate-600 dark:border-slate-600 py-2 my-2 font-extrabold text-sm flex justify-between items-center text-slate-900 dark:text-white">
+                      <span>TỔNG TIỀN:</span>
+                      <span className="text-base text-emerald-700 dark:text-emerald-400 dark:text-emerald-400">
+                        {Number(inv.amount).toLocaleString("vi-VN")} đ
+                      </span>
+                    </div>
 
-                <p className="text-[11px]">
-                  Hình thức:{" "}
-                  <b>
-                    {recentInvoice.payment_method === "cash"
-                      ? "Tiền mặt"
-                      : "Chuyển khoản VietQR"}
-                  </b>
-                </p>
-                <p className="text-[11px]">
-                  Trạng thái:{" "}
-                  <b className="text-emerald-700 dark:text-emerald-400 dark:text-emerald-400">
-                    ĐÃ XÁC NHẬN NỘP TIỀN
-                  </b>
-                </p>
-                <p className="text-center text-[10px] text-slate-400 italic pt-2">
-                  Cảm ơn Quý Phụ huynh & Học sinh!
-                </p>
+                    <p className="text-[11px]">
+                      Hình thức:{" "}
+                      <b>
+                        {inv.payment_method === "cash"
+                          ? "Tiền mặt"
+                          : "Chuyển khoản VietQR"}
+                      </b>
+                    </p>
+                    <p className="text-[11px]">
+                      Trạng thái:{" "}
+                      {inv.approval_status === "pending" ? (
+                        <b className="text-amber-600 dark:text-amber-400">CHỜ XÁC NHẬN CHUYỂN KHOẢN</b>
+                      ) : (
+                        <b className="text-emerald-700 dark:text-emerald-400 dark:text-emerald-400">ĐÃ XÁC NHẬN NỘP TIỀN</b>
+                      )}
+                    </p>
+                    <p className="text-center text-[10px] text-slate-400 italic pt-2">
+                      Cảm ơn Quý Phụ huynh & Học sinh!
+                    </p>
+                  </div>
+                ))}
               </div>
 
               <button

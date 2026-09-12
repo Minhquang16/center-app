@@ -69,9 +69,13 @@ Route::middleware('auth:sanctum')->group(function () {
     
     Route::middleware('permission:manage_finance')->group(function () {
         Route::post('/invoices', [InvoiceController::class, 'store']);
+        Route::post('/invoices/bulk', [InvoiceController::class, 'bulkStore']);
         Route::delete('/invoices/{id}', [InvoiceController::class, 'destroy']);
         Route::put('/invoices/{id}/approve', [InvoiceController::class, 'approve']);
         Route::put('/invoices/{id}/reject', [InvoiceController::class, 'reject']);
+
+        Route::get('/settings', [\App\Http\Controllers\Api\SettingController::class, 'index']);
+        Route::put('/settings', [\App\Http\Controllers\Api\SettingController::class, 'update']);
     });
 
     // Quản lý Học sinh
