@@ -19,7 +19,7 @@ class InvoiceController extends Controller
         if (!Storage::exists($settingsFile)) {
             return [
                 'bank_id' => 'TCB',
-                'account_no' => '6616102005',
+                'account_no' => '19036420745015',
                 'account_name' => 'SUNNY EDUCATION'
             ];
         }

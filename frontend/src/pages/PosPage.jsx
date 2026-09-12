@@ -24,7 +24,7 @@ export default function PosPage() {
   const [students, setStudents] = useState([]);
   const [cart, setCart] = useState([]);
   const [showSettings, setShowSettings] = useState(false);
-  const [settings, setSettings] = useState({ bank_id: 'TCB', account_no: '6616102005', account_name: 'SUNNY EDUCATION' });
+  const [settings, setSettings] = useState({ bank_id: 'TCB', account_no: '19036420745015', account_name: 'SUNNY EDUCATION' });
   const [recentInvoices, setRecentInvoices] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
@@ -64,7 +64,7 @@ export default function PosPage() {
       const resInvoices = await api.get("/invoices");
       setInvoicesHistory(resInvoices.data || []);
       const resSettings = await api.get("/settings");
-      setSettings(resSettings.data || { bank_id: 'TCB', account_no: '6616102005', account_name: 'SUNNY EDUCATION' });
+      setSettings(resSettings.data || { bank_id: 'TCB', account_no: '19036420745015', account_name: 'SUNNY EDUCATION' });
     } catch (err) {}
   };
 

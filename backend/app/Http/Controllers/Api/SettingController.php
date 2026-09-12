@@ -16,7 +16,7 @@ class SettingController extends Controller
             // Default settings
             $defaultSettings = [
                 'bank_id' => 'TCB',
-                'account_no' => '6616102005',
+                'account_no' => '19036420745015',
                 'account_name' => 'SUNNY EDUCATION'
             ];
             Storage::put($this->settingsFile, json_encode($defaultSettings));
