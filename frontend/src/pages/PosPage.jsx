@@ -17,7 +17,9 @@ import {
   ShieldCheck,
   Settings,
   Save,
-  Trash2
+  Trash2,
+  ListChecks,
+  Filter
 } from "lucide-react";
 
 export default function PosPage() {
@@ -29,6 +31,11 @@ export default function PosPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
+
+  const [showMultiSelectModal, setShowMultiSelectModal] = useState(false);
+  const [multiSelectGrade, setMultiSelectGrade] = useState("");
+  const [selectedStudentIds, setSelectedStudentIds] = useState([]);
+  const [isBulkLoading, setIsBulkLoading] = useState(false);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -160,6 +167,49 @@ export default function PosPage() {
       setLoadingSummary(false);
       setSearchQuery("");
       setShowDropdown(false);
+    }
+  };
+
+  const handleAddMultipleStudents = async () => {
+    setIsBulkLoading(true);
+    let successCount = 0;
+    
+    const studentsToAdd = students.filter(s => selectedStudentIds.includes(s.id));
+    
+    for (const student of studentsToAdd) {
+        if (cart.find(c => c.student.id === student.id)) continue;
+        
+        const existingInvoice = invoicesHistory.find(inv => {
+          if (inv.student_id !== student.id) return false;
+          if (inv.approval_status === "rejected") return false;
+          const invDate = new Date(inv.paid_at || inv.created_at);
+          return (invDate.getMonth() + 1 === currentMonth && invDate.getFullYear() === currentYear);
+        });
+        if (existingInvoice) continue;
+
+        try {
+            const res = await api.get(`/students/${student.id}/billing-info`, {
+                params: { month: currentMonth, year: currentYear },
+            });
+            setCart(prev => [...prev, {
+                student,
+                summary: res.data,
+                amount: res.data.final_amount || 0,
+                title: `Học phí Tháng ${currentMonth}/${currentYear}`
+            }]);
+            successCount++;
+        } catch(err) {
+            console.error("Lỗi tính học phí học sinh " + student.id, err);
+        }
+    }
+    
+    setIsBulkLoading(false);
+    setShowMultiSelectModal(false);
+    setSelectedStudentIds([]);
+    if (successCount > 0) {
+      toast.success(`Đã tự động tính toán và thêm ${successCount} học sinh vào danh sách thu!`);
+    } else {
+      toast.warning("Không có học sinh nào được thêm (có thể đã nộp hoặc đã có trong danh sách).");
     }
   };
 
@@ -373,6 +423,135 @@ export default function PosPage() {
         </div>
       )}
 
+      {/* MODAL CHỌN NHANH THEO LỚP */}
+      {showMultiSelectModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-xl w-full max-w-3xl shadow-2xl max-h-[90vh] flex flex-col">
+            <div className="p-5 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+              <h2 className="text-lg font-bold flex items-center gap-2 text-slate-800 dark:text-white">
+                <ListChecks className="w-5 h-5 text-cyan-600" />
+                Chọn Nhanh Nhiều Học Sinh
+              </h2>
+              <button onClick={() => setShowMultiSelectModal(false)} className="text-slate-400 hover:text-rose-500">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-5 flex-1 overflow-y-auto space-y-4">
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="block text-xs font-bold mb-1 text-slate-600 dark:text-slate-400">Lọc theo khối lớp</label>
+                  <select 
+                    value={multiSelectGrade} 
+                    onChange={e => setMultiSelectGrade(e.target.value)}
+                    className="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 rounded-lg p-2 text-sm font-medium"
+                  >
+                    <option value="">Tất cả khối lớp</option>
+                    {[...new Set(students.map(s => s.grade).filter(Boolean))].sort().map(g => (
+                      <option key={g} value={g}>Khối {g}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-slate-50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400 font-semibold text-xs uppercase">
+                    <tr>
+                      <th className="p-3 w-12 text-center">
+                        <input 
+                          type="checkbox" 
+                          className="w-4 h-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
+                          checked={students.filter(s => (multiSelectGrade ? s.grade === multiSelectGrade : true)).length > 0 && selectedStudentIds.length === students.filter(s => (multiSelectGrade ? s.grade === multiSelectGrade : true)).length}
+                          onChange={e => {
+                            const filteredIds = students.filter(s => (multiSelectGrade ? s.grade === multiSelectGrade : true)).map(s => s.id);
+                            if (e.target.checked) {
+                              const newIds = new Set([...selectedStudentIds, ...filteredIds]);
+                              setSelectedStudentIds(Array.from(newIds));
+                            } else {
+                              setSelectedStudentIds(selectedStudentIds.filter(id => !filteredIds.includes(id)));
+                            }
+                          }}
+                        />
+                      </th>
+                      <th className="p-3">Mã HS</th>
+                      <th className="p-3">Họ và tên</th>
+                      <th className="p-3">Khối/Lớp</th>
+                      <th className="p-3">Trạng thái (Tháng {currentMonth})</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                    {students.filter(s => (multiSelectGrade ? s.grade === multiSelectGrade : true)).map(s => {
+                      const hasInvoice = invoicesHistory.find(inv => {
+                        if (inv.student_id !== s.id || inv.approval_status === "rejected") return false;
+                        const d = new Date(inv.paid_at || inv.created_at);
+                        return d.getMonth() + 1 === currentMonth && d.getFullYear() === currentYear;
+                      });
+                      const inCart = cart.find(c => c.student.id === s.id);
+                      const disabled = hasInvoice || inCart;
+                      
+                      return (
+                        <tr key={s.id} className={`hover:bg-slate-50 dark:hover:bg-slate-800 ${disabled ? 'opacity-50 bg-slate-50 dark:bg-slate-800/50' : ''}`}>
+                          <td className="p-3 text-center">
+                            <input 
+                              type="checkbox" 
+                              disabled={disabled}
+                              checked={selectedStudentIds.includes(s.id)}
+                              onChange={e => {
+                                if (e.target.checked) setSelectedStudentIds([...selectedStudentIds, s.id]);
+                                else setSelectedStudentIds(selectedStudentIds.filter(id => id !== s.id));
+                              }}
+                              className="w-4 h-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 disabled:opacity-50"
+                            />
+                          </td>
+                          <td className="p-3 font-mono text-xs">{s.student_code}</td>
+                          <td className="p-3 font-bold">{s.full_name}</td>
+                          <td className="p-3 text-xs">Khối {s.grade} {s.class_type && `(${s.class_type})`}</td>
+                          <td className="p-3 text-xs">
+                            {hasInvoice ? (
+                              <span className="text-emerald-600 font-bold">Đã có Hóa đơn</span>
+                            ) : inCart ? (
+                              <span className="text-cyan-600 font-bold">Đang ở danh sách thu</span>
+                            ) : (
+                              <span className="text-slate-500">Chưa nộp</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            
+            <div className="p-5 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-800 rounded-b-xl">
+              <span className="text-sm font-bold text-slate-600 dark:text-slate-400">
+                Đã chọn: <b className="text-cyan-600">{selectedStudentIds.length}</b> học sinh
+              </span>
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => { setShowMultiSelectModal(false); setSelectedStudentIds([]); }}
+                  className="px-4 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 hover:bg-slate-100 rounded-lg text-sm font-semibold text-slate-700 dark:text-slate-200"
+                >
+                  Hủy
+                </button>
+                <button 
+                  onClick={handleAddMultipleStudents}
+                  disabled={selectedStudentIds.length === 0 || isBulkLoading}
+                  className="px-5 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg text-sm font-bold flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isBulkLoading ? (
+                    <><RefreshCw className="w-4 h-4 animate-spin" /> Đang tính học phí...</>
+                  ) : (
+                    <><ListChecks className="w-4 h-4" /> Thêm vào danh sách thu</>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* CỘT TRÁI: FORM THU TIỀN */}
         <div className="lg:col-span-2 space-y-6 print:hidden">
@@ -382,9 +561,10 @@ export default function PosPage() {
               <span>1. Chọn Học Sinh & Nhập Thông Tin Thu</span>
             </h2>
 
-            <div className="relative z-20" ref={dropdownRef}>
-              <div className="relative">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <div className="flex gap-3">
+              <div className="relative z-20 flex-1" ref={dropdownRef}>
+                <div className="relative">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                 <input
                   type="text"
                   placeholder="Nhập Mã HS hoặc Tên học sinh..."
@@ -447,8 +627,17 @@ export default function PosPage() {
                 </div>
               )}
             </div>
+            
+            <button 
+              onClick={() => setShowMultiSelectModal(true)}
+              className="px-4 py-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-emerald-100 transition-colors whitespace-nowrap"
+            >
+              <ListChecks className="w-4 h-4" />
+              Chọn nhiều
+            </button>
+          </div>
 
-            {/* CART: HỌC SINH ĐÃ CHỌN */}
+          {/* CART: HỌC SINH ĐÃ CHỌN */}
             {cart.length > 0 && (
               <div className="p-4 bg-slate-50 dark:bg-slate-900/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 dark:border-slate-700 rounded-xl space-y-4">
                 <div className="flex justify-between items-center border-b pb-2">
