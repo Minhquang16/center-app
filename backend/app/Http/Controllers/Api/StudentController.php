@@ -301,7 +301,7 @@ class StudentController extends Controller
             ];
 
             // --- Compute Global Check-in Stats ---
-            $globalAttendances = Attendance::with('student:id,grade,class_type')
+            $globalAttendances = Attendance::with('student:id,grade,class_type,status')
                 ->whereDate('checked_at', $targetDate)
                 ->whereIn('status', ['present', 'makeup'])
                 ->get();
@@ -326,7 +326,7 @@ class StudentController extends Controller
                 $processedStudents[] = $att->student_id;
 
                 $stu = $att->student;
-                if ($stu) {
+                if ($stu && $stu->status !== 'dropped') {
                     $grade = $stu->grade ?? '';
                     $classType = $stu->class_type ?? 'Khác';
                     $label = trim("$grade $classType");

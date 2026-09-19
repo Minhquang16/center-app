@@ -49,6 +49,8 @@ class InvoiceController extends Controller
         $invoiceCode = 'HD' . date('YmdHis') . rand(10, 99);
 
         $approvalStatus = $request->payment_method === 'transfer' ? 'pending' : 'approved';
+        $status = $request->payment_method === 'transfer' ? 'unpaid' : 'paid';
+        $paidAt = $request->payment_method === 'transfer' ? null : Carbon::now();
 
         $invoice = Invoice::create([
             'invoice_code'   => $invoiceCode,
@@ -56,9 +58,9 @@ class InvoiceController extends Controller
             'title'          => $request->title,
             'amount'         => $request->amount,
             'payment_method' => $request->payment_method,
-            'status'         => 'paid',
+            'status'         => $status,
             'approval_status'=> $approvalStatus,
-            'paid_at'        => Carbon::now(),
+            'paid_at'        => $paidAt,
         ]);
 
         AuditLog::create([
@@ -81,6 +83,10 @@ class InvoiceController extends Controller
         }
 
         $invoice->load('student');
+
+        if ($request->payment_method === 'transfer') {
+            $this->sendTransferNotificationEmail($invoice);
+        }
 
         return response()->json([
             'message' => 'Tạo hóa đơn thành công!',
@@ -106,6 +112,8 @@ class InvoiceController extends Controller
         DB::beginTransaction();
         try {
             $approvalStatus = $request->payment_method === 'transfer' ? 'pending' : 'approved';
+            $status = $request->payment_method === 'transfer' ? 'unpaid' : 'paid';
+            $paidAt = $request->payment_method === 'transfer' ? null : Carbon::now();
 
             foreach ($request->invoices as $invData) {
                 $student = Student::findOrFail($invData['student_id']);
@@ -117,9 +125,9 @@ class InvoiceController extends Controller
                     'title'          => $invData['title'],
                     'amount'         => $invData['amount'],
                     'payment_method' => $request->payment_method,
-                    'status'         => 'paid',
+                    'status'         => $status,
                     'approval_status'=> $approvalStatus,
-                    'paid_at'        => Carbon::now(),
+                    'paid_at'        => $paidAt,
                 ]);
 
                 AuditLog::create([
@@ -139,6 +147,10 @@ class InvoiceController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['message' => 'Lỗi tạo hóa đơn gộp: ' . $e->getMessage()], 500);
+        }
+
+        if ($request->payment_method === 'transfer') {
+            $this->sendTransferNotificationEmailBulk($createdInvoices, $totalAmount);
         }
 
         $qrUrl = '';
@@ -272,6 +284,8 @@ class InvoiceController extends Controller
     {
         $invoice = Invoice::findOrFail($id);
         $invoice->approval_status = 'approved';
+        $invoice->status = 'paid';
+        $invoice->paid_at = Carbon::now();
         $invoice->save();
         
         AuditLog::create([
@@ -291,5 +305,71 @@ class InvoiceController extends Controller
         $invoice->approval_status = 'rejected';
         $invoice->save();
         return response()->json(['message' => 'Hóa đơn đã bị từ chối.']);
+    }
+
+    private function getNotifyEmails()
+    {
+        $settings = $this->getSettings();
+        $emailsStr = $settings['notify_emails'] ?? 'admin@gmail.com';
+        
+        if (is_array($emailsStr)) {
+            return $emailsStr;
+        } else {
+            return array_map('trim', explode(',', $emailsStr));
+        }
+    }
+
+    private function sendTransferNotificationEmail($invoice)
+    {
+        try {
+            $emails = $this->getNotifyEmails();
+            if (empty($emails)) return;
+
+            $student = $invoice->student;
+            $subject = 'Thông báo: Có một khoản chuyển khoản đang chờ duyệt (' . $invoice->invoice_code . ')';
+            $body = "Chào Quản trị viên/Kế toán,\n\n"
+                  . "Hệ thống vừa ghi nhận một giao dịch chuyển khoản đang chờ duyệt.\n\n"
+                  . "- Mã hóa đơn: {$invoice->invoice_code}\n"
+                  . "- Học sinh: {$student->full_name} (" . ($student->student_code ?? 'N/A') . ")\n"
+                  . "- Số tiền: " . number_format($invoice->amount) . " VNĐ\n"
+                  . "- Nội dung: {$invoice->title}\n\n"
+                  . "Vui lòng kiểm tra tài khoản ngân hàng và truy cập hệ thống để duyệt/từ chối giao dịch này.\n\n"
+                  . "Trân trọng,\nHệ thống Sunny Education";
+
+            \Illuminate\Support\Facades\Mail::raw($body, function ($message) use ($emails, $subject) {
+                $message->to($emails)->subject($subject);
+            });
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Lỗi gửi email thông báo: ' . $e->getMessage());
+        }
+    }
+
+    private function sendTransferNotificationEmailBulk($invoices, $totalAmount)
+    {
+        try {
+            $emails = $this->getNotifyEmails();
+            if (empty($emails) || empty($invoices)) return;
+
+            $subject = 'Thông báo: Có giao dịch chuyển khoản GỘP đang chờ duyệt';
+            $body = "Chào Quản trị viên/Kế toán,\n\n"
+                  . "Hệ thống vừa ghi nhận giao dịch chuyển khoản GỘP đang chờ duyệt.\n\n"
+                  . "- Tổng số tiền: " . number_format($totalAmount) . " VNĐ\n"
+                  . "- Số lượng hóa đơn: " . count($invoices) . "\n\n"
+                  . "Chi tiết các hóa đơn:\n";
+
+            foreach ($invoices as $inv) {
+                $studentName = $inv->student ? $inv->student->full_name : 'N/A';
+                $body .= " + {$inv->invoice_code} - {$studentName}: " . number_format($inv->amount) . " VNĐ - {$inv->title}\n";
+            }
+
+            $body .= "\nVui lòng kiểm tra tài khoản ngân hàng và truy cập hệ thống để duyệt/từ chối.\n\n"
+                  . "Trân trọng,\nHệ thống Sunny Education";
+
+            \Illuminate\Support\Facades\Mail::raw($body, function ($message) use ($emails, $subject) {
+                $message->to($emails)->subject($subject);
+            });
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Lỗi gửi email thông báo gộp: ' . $e->getMessage());
+        }
     }
 }
