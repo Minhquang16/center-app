@@ -22,6 +22,7 @@ class Invoice extends Model
         'amount',
         'payment_method',
         'status',
+        'approval_status',
         'paid_at',
         'branch_id'
     ];
