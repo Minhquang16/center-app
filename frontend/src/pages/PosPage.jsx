@@ -438,7 +438,7 @@ export default function PosPage() {
             </div>
             
             <div className="p-5 flex-1 overflow-y-auto space-y-4">
-              <div className="flex gap-4">
+              <div className="flex gap-4 items-end">
                 <div className="flex-1">
                   <label className="block text-xs font-bold mb-1 text-slate-600 dark:text-slate-400">Lọc theo khối lớp</label>
                   <select 
@@ -452,28 +452,35 @@ export default function PosPage() {
                     ))}
                   </select>
                 </div>
+                <button 
+                  onClick={() => {
+                    const filteredIds = students.filter(s => (multiSelectGrade ? s.grade === multiSelectGrade : true)).filter(s => {
+                      const hasInvoice = invoicesHistory.find(inv => {
+                        if (inv.student_id !== s.id || inv.approval_status === "rejected") return false;
+                        const d = new Date(inv.paid_at || inv.created_at);
+                        return d.getMonth() + 1 === currentMonth && d.getFullYear() === currentYear;
+                      });
+                      const inCart = cart.find(c => c.student.id === s.id);
+                      return !hasInvoice && !inCart;
+                    }).map(s => s.id);
+                    
+                    if (selectedStudentIds.length === filteredIds.length && filteredIds.length > 0) {
+                      setSelectedStudentIds([]); // Deselect all
+                    } else {
+                      setSelectedStudentIds(filteredIds); // Select all valid
+                    }
+                  }}
+                  className="px-4 py-2 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-sm font-bold rounded-lg transition-colors"
+                >
+                  Chọn tất cả lớp này
+                </button>
               </div>
 
               <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
                 <table className="w-full text-left text-sm">
                   <thead className="bg-slate-50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400 font-semibold text-xs uppercase">
                     <tr>
-                      <th className="p-3 w-12 text-center">
-                        <input 
-                          type="checkbox" 
-                          className="w-4 h-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
-                          checked={students.filter(s => (multiSelectGrade ? s.grade === multiSelectGrade : true)).length > 0 && selectedStudentIds.length === students.filter(s => (multiSelectGrade ? s.grade === multiSelectGrade : true)).length}
-                          onChange={e => {
-                            const filteredIds = students.filter(s => (multiSelectGrade ? s.grade === multiSelectGrade : true)).map(s => s.id);
-                            if (e.target.checked) {
-                              const newIds = new Set([...selectedStudentIds, ...filteredIds]);
-                              setSelectedStudentIds(Array.from(newIds));
-                            } else {
-                              setSelectedStudentIds(selectedStudentIds.filter(id => !filteredIds.includes(id)));
-                            }
-                          }}
-                        />
-                      </th>
+                      <th className="p-3 w-12 text-center">STT</th>
                       <th className="p-3">Mã HS</th>
                       <th className="p-3">Họ và tên</th>
                       <th className="p-3">Khối/Lớp</th>
@@ -491,18 +498,20 @@ export default function PosPage() {
                       const disabled = hasInvoice || inCart;
                       
                       return (
-                        <tr key={s.id} className={`hover:bg-slate-50 dark:hover:bg-slate-800 ${disabled ? 'opacity-50 bg-slate-50 dark:bg-slate-800/50' : ''}`}>
-                          <td className="p-3 text-center">
-                            <input 
-                              type="checkbox" 
-                              disabled={disabled}
-                              checked={selectedStudentIds.includes(s.id)}
-                              onChange={e => {
-                                if (e.target.checked) setSelectedStudentIds([...selectedStudentIds, s.id]);
-                                else setSelectedStudentIds(selectedStudentIds.filter(id => id !== s.id));
-                              }}
-                              className="w-4 h-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 disabled:opacity-50"
-                            />
+                        <tr 
+                          key={s.id} 
+                          onClick={() => {
+                            if (disabled) return;
+                            if (selectedStudentIds.includes(s.id)) {
+                              setSelectedStudentIds(selectedStudentIds.filter(id => id !== s.id));
+                            } else {
+                              setSelectedStudentIds([...selectedStudentIds, s.id]);
+                            }
+                          }}
+                          className={`cursor-pointer transition-colors ${disabled ? 'opacity-50 bg-slate-50 dark:bg-slate-800/50' : selectedStudentIds.includes(s.id) ? 'bg-cyan-50 dark:bg-cyan-900/30' : 'hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                        >
+                          <td className="p-3 text-center font-bold text-slate-400">
+                            {selectedStudentIds.includes(s.id) ? <CheckCircle2 className="w-5 h-5 text-cyan-600 mx-auto" /> : "-"}
                           </td>
                           <td className="p-3 font-mono text-xs">{s.student_code}</td>
                           <td className="p-3 font-bold">{s.full_name}</td>
@@ -599,9 +608,7 @@ export default function PosPage() {
                       <div
                         key={s.id}
                         onClick={() => {
-                          setSelectedStudent(s);
-                          setSearchQuery("");
-                          setShowDropdown(false);
+                          handleSelectStudent(s);
                         }}
                         className="p-3 hover:bg-cyan-50 dark:hover:bg-cyan-900/30 dark:bg-cyan-900/30 dark:hover:bg-cyan-900/30 dark:bg-cyan-900/30 cursor-pointer flex justify-between items-center transition-colors"
                       >
