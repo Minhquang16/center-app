@@ -856,12 +856,21 @@ export default function PosPage() {
         <div className="lg:col-span-1">
           {recentInvoices.length > 0 ? (
             <div className="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm dark:shadow-none dark:shadow-none border border-slate-200 dark:border-slate-700 dark:border-slate-700 text-center space-y-4">
-              <div className="flex justify-center items-center text-emerald-700 dark:text-emerald-400 dark:text-emerald-400 space-x-1.5 bg-emerald-50 dark:bg-emerald-900/30 dark:bg-emerald-900/30 py-2 rounded-lg border border-emerald-200 print:hidden">
-                <CheckCircle2 className="w-5 h-5" />
-                <span className="font-bold text-sm">
-                  ĐÃ TẠO {recentInvoices.length} PHIẾU THU THÀNH CÔNG
-                </span>
-              </div>
+              {recentInvoices[0].approval_status === "pending" ? (
+                <div className="flex justify-center items-center text-amber-700 dark:text-amber-400 space-x-1.5 bg-amber-50 dark:bg-amber-900/30 py-2 rounded-lg border border-amber-200 print:hidden">
+                  <AlertTriangle className="w-5 h-5" />
+                  <span className="font-bold text-sm uppercase">
+                    CHỜ XÁC NHẬN CHUYỂN KHOẢN ({recentInvoices.length} PHIẾU)
+                  </span>
+                </div>
+              ) : (
+                <div className="flex justify-center items-center text-emerald-700 dark:text-emerald-400 space-x-1.5 bg-emerald-50 dark:bg-emerald-900/30 py-2 rounded-lg border border-emerald-200 print:hidden">
+                  <CheckCircle2 className="w-5 h-5" />
+                  <span className="font-bold text-sm uppercase">
+                    ĐÃ TẠO {recentInvoices.length} PHIẾU THU THÀNH CÔNG
+                  </span>
+                </div>
+              )}
 
               {recentInvoices[0].payment_method === "transfer" && qrUrl && (
                 <div className="bg-slate-50 dark:bg-slate-900/50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-200 dark:border-slate-700 dark:border-slate-700 inline-block shadow-inner print:hidden">
